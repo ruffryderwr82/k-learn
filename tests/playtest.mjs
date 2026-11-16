@@ -49,7 +49,7 @@ const run = (withSounds) => page.evaluate(async (withSounds) => {
         const s = g.active;
         const want = s.q.sequence ? s.q.sequence[s.step] : s.q.answer; // spelling: the next letter
         const slot = s.slots.find((b) => b.choice === want);
-        const tx = (slot.c + 1) * 48;
+        const tx = slot.x ?? (slot.c + 1) * 48; // balloons and sign-carrying Grumps move
         const onTop = p.y + p.h <= slot.r * 48; // landed on the blocks: walk back off first
         inp.left = onTop || px > tx + 6;
         inp.right = !onTop && px < tx - 6;

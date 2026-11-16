@@ -11,6 +11,8 @@ export const STATION_SLOTS = [1, 4, 7]; // left column of each 2-wide answer blo
 export const BLOCK_ROW = GROUND - 4;
 
 export const BOSS_HP = 5;
+// Ways to answer: bump a block, pop a floating balloon, or stomp the Grump carrying the answer.
+export const STATION_MODES = ['balloons', 'grumps', 'blocks', 'grumps', 'balloons', 'blocks'];
 
 /**
  * variant: which of the level's layouts to build (replays rotate through them).
@@ -137,7 +139,10 @@ export function generateLevel(levelIndex, world, { variant = 0, boss = false, st
     });
     const barrierC = start + 11;
     for (let r = 0; r < GROUND; r++) set(barrierC, r, T.BARRIER);
-    lv.stations.push({ c0: start, blocks, barrierC });
+    // How this gate is answered. The very first gate of a level is always blocks.
+    const n = lv.stations.length;
+    const mode = n === 0 ? 'blocks' : STATION_MODES[(n + levelIndex * 2 + variant) % STATION_MODES.length];
+    lv.stations.push({ c0: start, blocks, barrierC, mode });
   };
 
   const fillers = [flat.bind(null, 5), floaters];
@@ -166,7 +171,7 @@ export function generateLevel(levelIndex, world, { variant = 0, boss = false, st
     });
     const barrierC = start + 18;
     for (let r = 0; r < GROUND; r++) set(barrierC, r, T.BARRIER);
-    lv.stations.push({ c0: start + 1, blocks, barrierC, boss: true });
+    lv.stations.push({ c0: start + 1, blocks, barrierC, boss: true, mode: 'blocks' });
     lv.boss = { x: (start + 14.5) * TILE, y: GROUND * TILE, leftX: (start + 0.5) * TILE, centerX: (start + 9.5) * TILE };
   };
 

@@ -22,7 +22,7 @@ test('every level builds valid questions, with and without recorded sounds', () 
         // every recorded sound a script asks for must exist
         for (const part of [...(q.audio || []), ...(q.praiseAudio || [])]) if (part.s) assert.ok(SOUNDS[part.s], `${level.id} unknown sound ${part.s}`);
         if (!has()) {
-          assert.equal(q.audio, undefined, `${level.id} ${q.type} needs recordings it does not have`);
+          for (const part of [...(q.audio || []), ...(q.praiseAudio || [])]) assert.equal(part.s, undefined, `${level.id} ${q.type} needs recordings it does not have`);
           assert.notEqual(q.type, 'blend');
         }
         if (q.sequence) {
@@ -36,6 +36,12 @@ test('every level builds valid questions, with and without recorded sounds', () 
       }
     }
   }
+});
+
+test('letter names are spoken as the capital letter, never a respelling', () => {
+  const q = makeQuestion({ ...LEVELS[0], types: ['nameL'], pool: ['a'] }, {}, mulberry32(1));
+  assert.equal(q.say, 'Find the letter A.');
+  assert.deepEqual(q.audio, ['Find the letter', { name: 'a' }]);
 });
 
 test('every word breaks into known sounds', () => {

@@ -133,12 +133,13 @@ function utter(text) {
 let playId = 0; // bumping this cancels whatever is playing
 
 /**
- * Play a script: a list of text to speak, { s: soundId } recorded sounds and { pause: ms }.
+ * Play a script: a list of text to speak, { s: soundId } recorded sounds,
+ * { name: letter } letter names (a recording if there is one, else the voice) and { pause: ms }.
  * A plain string works too. Starting a new script stops the one before it.
  */
 export async function play(script) {
   const parts = typeof script === 'string' ? [script] : script.filter(Boolean);
-  lastSpoken.text = parts.map((p) => (typeof p === 'string' ? p : p.s ? `/${p.s}/` : '')).filter(Boolean).join(' ');
+  lastSpoken.text = parts.map((p) => (typeof p === 'string' ? p : p.s ? `/${p.s}/` : p.name ? `[${p.name.toUpperCase()}]` : '')).filter(Boolean).join(' ');
   hush();
   const id = playId;
   talking++;
@@ -149,6 +150,7 @@ export async function play(script) {
       if (typeof part === 'string') await utter(part);
       else if (part.pause) await wait(part.pause);
       else if (part.s) await playSound(part.s);
+      else if (part.name) await (clips.has(`name:${part.name}`) ? playSound(`name:${part.name}`) : utter(part.name.toUpperCase()));
     }
   } finally { talking--; }
 }
@@ -209,7 +211,7 @@ export async function loadClips() {
 }
 
 export const hasSound = (id) => clips.has(id);
-export const soundCount = () => clips.size;
+export const soundCount = () => [...clips.keys()].filter((k) => !k.startsWith('name:')).length;
 
 export function playSound(id) {
   const clip = clips.get(id);

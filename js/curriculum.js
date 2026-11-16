@@ -9,35 +9,40 @@
 //   5. teach the few irregular words by sounding out what can be and marking the tricky part
 import { SOUNDS, soundOf, segment, soundsIn } from './sounds.js';
 
-// Spoken letter names are spelled out so text-to-speech never guesses wrong.
+// Each letter with a key word that starts with its sound.
 export const LETTERS = {
-  a: { name: 'ay', word: 'apple', emoji: '🍎' },
-  b: { name: 'bee', word: 'ball', emoji: '🏀' },
-  c: { name: 'see', word: 'cat', emoji: '🐱' },
-  d: { name: 'dee', word: 'dog', emoji: '🐶' },
-  e: { name: 'ee', word: 'egg', emoji: '🥚' },
-  f: { name: 'eff', word: 'fish', emoji: '🐟' },
-  g: { name: 'jee', word: 'goat', emoji: '🐐' },
-  h: { name: 'aitch', word: 'hat', emoji: '🎩' },
-  i: { name: 'eye', word: 'iguana', emoji: '🦎' },
-  j: { name: 'jay', word: 'juice', emoji: '🧃' },
-  k: { name: 'kay', word: 'kite', emoji: '🪁' },
-  l: { name: 'el', word: 'lion', emoji: '🦁' },
-  m: { name: 'em', word: 'moon', emoji: '🌙' },
-  n: { name: 'en', word: 'nose', emoji: '👃' },
-  o: { name: 'oh', word: 'octopus', emoji: '🐙' },
-  p: { name: 'pee', word: 'pig', emoji: '🐷' },
-  q: { name: 'cue', word: 'queen', emoji: '👸' },
-  r: { name: 'are', word: 'rocket', emoji: '🚀' },
-  s: { name: 'ess', word: 'sun', emoji: '☀️' },
-  t: { name: 'tee', word: 'turtle', emoji: '🐢' },
-  u: { name: 'you', word: 'umbrella', emoji: '☂️' },
-  v: { name: 'vee', word: 'volcano', emoji: '🌋' },
-  w: { name: 'double you', word: 'wolf', emoji: '🐺' },
-  x: { name: 'ex', word: 'fox', emoji: '🦊', end: true }, // x is taught as an ending sound
-  y: { name: 'why', word: 'yarn', emoji: '🧶' },
-  z: { name: 'zee', word: 'zebra', emoji: '🦓' },
+  a: { word: 'apple', emoji: '🍎' },
+  b: { word: 'ball', emoji: '🏀' },
+  c: { word: 'cat', emoji: '🐱' },
+  d: { word: 'dog', emoji: '🐶' },
+  e: { word: 'egg', emoji: '🥚' },
+  f: { word: 'fish', emoji: '🐟' },
+  g: { word: 'goat', emoji: '🐐' },
+  h: { word: 'hat', emoji: '🎩' },
+  i: { word: 'iguana', emoji: '🦎' },
+  j: { word: 'juice', emoji: '🧃' },
+  k: { word: 'kite', emoji: '🪁' },
+  l: { word: 'lion', emoji: '🦁' },
+  m: { word: 'moon', emoji: '🌙' },
+  n: { word: 'nose', emoji: '👃' },
+  o: { word: 'octopus', emoji: '🐙' },
+  p: { word: 'pig', emoji: '🐷' },
+  q: { word: 'queen', emoji: '👸' },
+  r: { word: 'rocket', emoji: '🚀' },
+  s: { word: 'sun', emoji: '☀️' },
+  t: { word: 'turtle', emoji: '🐢' },
+  u: { word: 'umbrella', emoji: '☂️' },
+  v: { word: 'volcano', emoji: '🌋' },
+  w: { word: 'wolf', emoji: '🐺' },
+  x: { word: 'fox', emoji: '🦊', end: true }, // x is taught as an ending sound
+  y: { word: 'yarn', emoji: '🧶' },
+  z: { word: 'zebra', emoji: '🦓' },
 };
+
+// A letter's name is spoken by handing the voice the capital letter on its own ("A"), which
+// engines read as the letter name. Phonetic respellings ("ay") are unreliable: some voices
+// read that one as "eye". A grown-up can also record any letter name to override the voice.
+for (const [l, v] of Object.entries(LETTERS)) v.name = l.toUpperCase();
 
 // Letters are introduced in a phonics-friendly order (useful sounds first,
 // look-alikes such as b/d kept apart) rather than alphabetically.
@@ -333,11 +338,14 @@ function finish(q, right, wrongs, rng) {
 }
 
 const spell = (g) => [...g].map((ch) => LETTERS[ch].name).join(' ');
-const letterChoice = (l, upper) => ({ label: upper ? l.toUpperCase() : l, kind: 'letter', say: spell(l), sound: soundOf(l) });
+const nm = (l) => ({ name: l });               // a letter name, as its own piece of audio
+const names = (g) => [...g].map(nm);
+const letterChoice = (l, upper) => ({ label: upper ? l.toUpperCase() : l, kind: 'letter', say: spell(l), names: [...l], sound: soundOf(l) });
 const wordChoice = (w) => ({ label: w, kind: 'word', say: w });
 const picChoice = (w) => ({ label: PICTURES[w], kind: 'emoji', say: w });
 
-// Audio scripts are lists of: text to speak, { s: sound id } to play a recorded sound, or { pause: ms }.
+// Audio scripts are lists of: text to speak, { s: sound id } to play a recorded sound,
+// { name: letter } to say a letter's name, or { pause: ms }.
 const snd = (s) => ({ s });
 const stretched = (word) => soundsIn(word).flatMap((s, i) => (i ? [{ pause: 350 }, snd(s)] : [snd(s)]));
 const DIGRAPHS = ['sh', 'ch', 'th', 'ck', 'ng', 'ee', 'ai', 'oa', 'oo', 'ar', 'or', 'ir'];
@@ -382,6 +390,7 @@ export function makeQuestion(level, mastery = {}, rng = Math.random, avoid = nul
         say: `${S.word}. Which one makes the sound at the ${where} of ${S.word}?`,
         show: { emoji: S.emoji },
         praise: `Yes! ${spell(item)}. ${S.word}.`,
+        praiseAudio: ['Yes!', ...names(item), `${S.word}.`],
       };
       if (has(sid)) {
         q.audio = ['Which one says', snd(sid), { pause: 200 }, snd(sid)];
@@ -395,7 +404,14 @@ export function makeQuestion(level, mastery = {}, rng = Math.random, avoid = nul
       const sid = soundOf(item);
       const where = L.end ? 'ends' : 'starts';
       const pic = (l) => ({ label: LETTERS[l].emoji, kind: 'emoji', say: LETTERS[l].word });
-      const q = { ...base, say: `This is ${L.name}. Which one ${where} with ${L.name}?`, show: { text: item }, praise: `${L.word} ${where} with ${L.name}!` };
+      const q = {
+        ...base,
+        say: `This is the letter ${L.name}. Which one ${where} with ${L.name}?`,
+        audio: ['This is', nm(item), `Which one ${where} with`, nm(item)],
+        show: { text: item },
+        praise: `${L.word} ${where} with ${L.name}!`,
+        praiseAudio: [`${L.word} ${where} with`, nm(item)],
+      };
       if (has(sid)) {
         q.audio = ['This says', snd(sid), `Which one ${where} with`, snd(sid)];
         q.praiseAudio = [snd(sid), { pause: 150 }, `${L.word}!`];
@@ -406,15 +422,16 @@ export function makeQuestion(level, mastery = {}, rng = Math.random, avoid = nul
     case 'nameL': {
       const up = type === 'nameU';
       const L = LETTERS[item];
-      const q = { ...base, say: `Find the letter ${L.name}.`, show: null, praise: `${L.name}!` };
-      if (has(soundOf(item))) q.praiseAudio = [`${L.name} says`, snd(soundOf(item))];
+      const q = { ...base, say: `Find the letter ${L.name}.`, audio: ['Find the letter', nm(item)], show: null, praise: `${L.name}!`, praiseAudio: [nm(item)] };
+      if (has(soundOf(item))) q.praiseAudio = [nm(item), 'says', snd(soundOf(item))];
       return finish(q, letterChoice(item, up), otherLetters(level, item, 2, rng).map((l) => letterChoice(l, up)), rng);
     }
     case 'match': {
       const toLower = rng() < 0.5;
       const L = LETTERS[item];
-      const q = { ...base, say: `This is ${L.name}. Find its ${toLower ? 'little' : 'big'} partner.`, show: { text: toLower ? item.toUpperCase() : item }, praise: `${L.name}!` };
-      if (has(soundOf(item))) q.praiseAudio = [`${L.name} says`, snd(soundOf(item))];
+      const partner = `Find its ${toLower ? 'little' : 'big'} partner.`;
+      const q = { ...base, say: `This is the letter ${L.name}. ${partner}`, audio: ['This is', nm(item), partner], show: { text: toLower ? item.toUpperCase() : item }, praise: `${L.name}!`, praiseAudio: [nm(item)] };
+      if (has(soundOf(item))) q.praiseAudio = [nm(item), 'says', snd(soundOf(item))];
       return finish(q, letterChoice(item, !toLower), otherLetters(level, item, 2, rng).map((l) => letterChoice(l, !toLower)), rng);
     }
     case 'firstSound':
@@ -431,6 +448,7 @@ export function makeQuestion(level, mastery = {}, rng = Math.random, avoid = nul
         say: `${item}. What is the ${which} sound in ${item}?`,
         show: { emoji: PICTURES[item] },
         praise: `Yes! ${spell(g)}. ${item}.`,
+        praiseAudio: ['Yes!', nm(g), `${item}.`],
       };
       if (has(seg[at].s)) q.praiseAudio = [snd(seg[at].s), { pause: 150 }, `${item}.`];
       return finish(q, letterChoice(g, false), otherLetters(level, g, 2, rng, isVowel ? [...'aeiou'] : CONSONANTS).map((l) => letterChoice(l, false)), rng);

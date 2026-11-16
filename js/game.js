@@ -386,14 +386,26 @@ export class Game {
       s.state = 'active';
       s.firstTry = true;
       s.step = 0; // for spelling questions: how many letters are in place
+      s.askedT = this.t;
+      s.armed = false;
       // two answers use the outer blocks; the middle one is removed
       const use = q.choices.length === 2 ? [0, 2] : [0, 1, 2];
-      s.slots = use.map((slot, i) => ({ c: s.c0 + STATION_SLOTS[slot], r: s.blocks[slot].r, choice: i, wrong: false, pop: this.t + i * 0.08 }));
-      if (q.choices.length === 2) {
-        const b = s.blocks[1];
+      // spelling needs blocks that stay put; otherwise use this gate's own style
+      s.live = q.sequence ? 'blocks' : s.mode;
+      s.slots = use.map((slot, i) => {
+        const c = s.c0 + STATION_SLOTS[slot];
+        const base = { c, r: s.blocks[slot].r, choice: i, wrong: false, pop: this.t + i * 0.08 };
+        if (s.live === 'balloons') return { ...base, homeX: (c + 1) * TILE, homeY: GROUND * TILE - 150, x: (c + 1) * TILE, y: GROUND * TILE - 150 };
+        if (s.live === 'grumps') return { ...base, homeX: (c + 1) * TILE, x: (c + 1) * TILE, y: GROUND * TILE - 60, dir: i % 2 ? 1 : -1 };
+        return base;
+      });
+      // clear the blocks that are not needed (all of them when the answers float or walk)
+      s.blocks.forEach((b, i) => {
+        if (s.live === 'blocks' && use.includes(i)) return;
         this.setTile(b.c, b.r, T.EMPTY);
         this.setTile(b.c + 1, b.r, T.EMPTY);
-      }
+        if (s.live !== 'blocks') this._burst((b.c + 1) * TILE, (b.r + 0.5) * TILE, '#ffe9a8', 8);
+      });
       this.active = s;
       this.hooks.onPrompt?.(q, 0);
       this.hooks.ask?.(q);
@@ -410,8 +422,8 @@ export class Game {
 
   answer(s, slot) {
     const q = s.q;
-    const bx = (slot.c + 1) * TILE;
-    const by = slot.r * TILE;
+    const bx = slot.x ?? (slot.c + 1) * TILE;
+    const by = slot.y ?? slot.r * TILE;
     slot.bumpT = this.t;
     if (q.sequence) {
       // spelling: the letters must be bumped in order, one sound at a time
@@ -529,6 +541,30 @@ export class Game {
         this._burst(g.x, g.y, '#7df9ff', 20);
         this.popups.push({ x: g.x, y: g.y - 30, text: '💎', t: this.t, size: 40 });
         this._hud();
+      }
+    }
+
+    // answers that float (balloons) or walk (Grumps with signs)
+    const st = this.active;
+    if (st && st.live !== 'blocks') {
+      // Nothing counts until he has landed and had a moment to look, so arriving
+      // mid-jump can never pop a balloon or squash a Grump by accident.
+      if (!st.armed && p.grounded && this.t - st.askedT > 0.4) st.armed = true;
+      for (const [i, a] of st.slots.entries()) {
+        if (a.wrong || st.state !== 'active') continue;
+        if (st.live === 'balloons') {
+          a.x = a.homeX + Math.sin(this.t * 0.8 + i * 2) * 16;
+          a.y = a.homeY + Math.sin(this.t * 1.7 + i) * 18;
+          const nx = clamp(a.x, p.x, p.x + p.w);
+          const ny = clamp(a.y, p.y, p.y + p.h);
+          if (st.armed && Math.hypot(a.x - nx, a.y - ny) < 38) this.answer(st, a);
+        } else {
+          a.x += a.dir * 30 * dt;
+          if (Math.abs(a.x - a.homeX) > 20) a.dir = a.x > a.homeX ? -1 : 1;
+          // only a stomp counts: walking into one does nothing
+          const box = { x: a.x - 26, y: GROUND * TILE - 36, w: 52, h: 36 };
+          if (st.armed && p.vy > 80 && p.y + p.h < box.y + 22 && overlap(p, box)) { p.vy = -560; this.answer(st, a); }
+        }
       }
     }
 
@@ -876,6 +912,7 @@ export class Game {
     ctx.textBaseline = 'middle';
     for (const s of this.stations) {
       if (s.c0 * TILE > cam.x + viewW + 100 || (s.c0 + 14) * TILE < cam.x - 100) continue;
+      if (s.state !== 'idle' && s.live !== 'blocks') { this._drawFloaters(s); continue; }
       const slots = s.state === 'idle' ? s.blocks.map((b) => ({ ...b, blank: true })) : s.slots;
       for (const b of slots) {
         const choice = b.blank ? null : s.q.choices[b.choice];
@@ -903,34 +940,101 @@ export class Game {
         ctx.stroke();
 
         ctx.globalAlpha = faded ? 0.45 : 1;
-        ctx.fillStyle = '#26314f';
-        const cx = x + w / 2;
-        const cy = y + h / 2 + 2;
-        if (!choice) {
-          ctx.fillStyle = '#b36b00';
-          ctx.font = `700 34px ${FONT}`;
-          ctx.fillText('?', cx, cy);
-        } else if (choice.kind === 'emoji') {
-          ctx.font = '36px sans-serif';
-          ctx.fillText(choice.label, cx, cy + 1);
-        } else {
-          let size = choice.kind === 'letter' ? 42 : 34;
-          ctx.font = `700 ${size}px ${FONT}`;
-          while (ctx.measureText(choice.label).width > w - 18 && size > 16) { size -= 2; ctx.font = `700 ${size}px ${FONT}`; }
-          if (choice.heart?.length) {
-            // tricky words: the letters to learn by heart are red
-            let lx = cx - ctx.measureText(choice.label).width / 2;
-            ctx.textAlign = 'left';
-            [...choice.label].forEach((ch, i) => {
-              ctx.fillStyle = choice.heart.includes(i) ? '#e11d48' : '#26314f';
-              ctx.fillText(ch, lx, cy - 2);
-              lx += ctx.measureText(ch).width;
-            });
-            ctx.textAlign = 'center';
-          } else ctx.fillText(choice.label, cx, cy - 2);
-        }
+        this._label(choice, x + w / 2, y + h / 2 + 2, w);
         ctx.globalAlpha = 1;
       }
+    }
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  /** An answer's text or picture, centered, shrunk to fit. */
+  _label(choice, cx, cy, w) {
+    const { ctx } = this;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#26314f';
+    if (!choice) {
+      ctx.fillStyle = '#b36b00';
+      ctx.font = `700 34px ${FONT}`;
+      ctx.fillText('?', cx, cy);
+    } else if (choice.kind === 'emoji') {
+      ctx.font = '36px sans-serif';
+      ctx.fillText(choice.label, cx, cy + 1);
+    } else {
+      let size = choice.kind === 'letter' ? 42 : 34;
+      ctx.font = `700 ${size}px ${FONT}`;
+      while (ctx.measureText(choice.label).width > w - 18 && size > 16) { size -= 2; ctx.font = `700 ${size}px ${FONT}`; }
+      if (choice.heart?.length) {
+        // tricky words: the letters to learn by heart are red
+        let lx = cx - ctx.measureText(choice.label).width / 2;
+        ctx.textAlign = 'left';
+        [...choice.label].forEach((ch, i) => {
+          ctx.fillStyle = choice.heart.includes(i) ? '#e11d48' : '#26314f';
+          ctx.fillText(ch, lx, cy - 2);
+          lx += ctx.measureText(ch).width;
+        });
+        ctx.textAlign = 'center';
+      } else ctx.fillText(choice.label, cx, cy - 2);
+    }
+  }
+
+  // Balloons to pop and Grumps to stomp, each carrying one answer.
+  _drawFloaters(s) {
+    const { ctx, t } = this;
+    const COLORS = ['#ff8fab', '#7fd4ff', '#b9f18d'];
+    for (const a of s.slots) {
+      const right = s.state === 'done' && a.choice === s.q.answer;
+      const since = t - (a.bumpT ?? -9);
+      // popped or finished ones shrink away; the right one lingers a moment longer
+      const gone = a.wrong || s.state === 'done';
+      const k = gone ? Math.max(0, 1 - since / (right ? 0.9 : 0.25)) : Math.min(1, (t - a.pop) / 0.25);
+      if (gone && s.state === 'done' && !right && a.bumpT === undefined) a.bumpT = t;
+      if (k <= 0) continue;
+      const choice = s.q.choices[a.choice];
+      ctx.save();
+      if (s.live === 'balloons') {
+        ctx.translate(a.x, a.y - (right ? since * 120 : 0));
+        ctx.scale(k, k);
+        ctx.strokeStyle = 'rgba(38,49,79,0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, 44); ctx.quadraticCurveTo(8, 62, -2, 84); ctx.stroke();
+        ctx.fillStyle = right ? '#7ee081' : COLORS[a.choice % 3];
+        ctx.beginPath(); ctx.ellipse(0, 0, 52, 46, 0, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-7, 44); ctx.lineTo(7, 44); ctx.lineTo(0, 52); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.beginPath(); ctx.ellipse(-22, -20, 12, 8, -0.6, 0, 7); ctx.fill();
+        this._label(choice, 0, 2, 96);
+      } else {
+        const squish = gone ? Math.max(0.2, k) : 1;
+        ctx.translate(a.x, GROUND * TILE);
+        // the Grump (teal, so it is clearly not one of the purple ones that hurt)
+        const h = (34 + Math.sin(t * 8 + a.choice) * 2) * squish;
+        ctx.fillStyle = '#2fb5a6';
+        roundRect(ctx, -22, -h, 44, h, Math.min(14, h / 2));
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(-8 + a.dir * 3, -h + 14, 6, 0, 7); ctx.arc(8 + a.dir * 3, -h + 14, 6, 0, 7); ctx.fill();
+        ctx.fillStyle = '#12423d';
+        ctx.beginPath(); ctx.arc(-8 + a.dir * 5, -h + 15, 3, 0, 7); ctx.arc(8 + a.dir * 5, -h + 15, 3, 0, 7); ctx.fill();
+        // its sign
+        ctx.globalAlpha = Math.min(1, k * 2);
+        ctx.fillStyle = '#8a6a45';
+        ctx.fillRect(-3, -h - 22, 6, 24);
+        ctx.fillStyle = right ? '#7ee081' : '#fffdf5';
+        roundRect(ctx, -48, -h - 76, 96, 56, 12);
+        ctx.fill();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = right ? '#3fae4a' : '#2fb5a6';
+        ctx.stroke();
+        this._label(choice, 0, -h - 46, 96);
+        // an arrow that says "jump on me"
+        if (!gone) {
+          ctx.fillStyle = '#2fb5a6';
+          const bob = Math.sin(t * 6) * 3;
+          ctx.beginPath(); ctx.moveTo(-8, -h - 92 + bob); ctx.lineTo(8, -h - 92 + bob); ctx.lineTo(0, -h - 82 + bob); ctx.fill();
+        }
+      }
+      ctx.restore();
     }
     ctx.textBaseline = 'alphabetic';
   }

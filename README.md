@@ -2,7 +2,8 @@
 
 A platformer that teaches a kindergartner to read, built so the game comes first.
 Run, jump, stomp Grumps, hunt hidden gems and dress up Pip. The reading *is* the
-game mechanic: every gate opens by bumping the right answer block with your head.
+game mechanic: every gate opens by giving the right answer, and how you answer keeps changing
+(bump a block, pop a balloon, stomp the Grump carrying the right sign).
 
 Made for touch on an iPad. Also works with a keyboard (arrows + space) and on phones.
 
@@ -34,8 +35,12 @@ literacy programs:
 
 A tablet's built-in voice can say letter *names* but not a clean "mmm" or "sss", and sounding out
 depends on those. So a grown-up records each of the 39 sounds once: title screen → hold the
-Grown-ups button → **Letter sounds in your voice**. Each one comes with a tip on saying it purely
+Grown-ups button → **Your voice**. Each one comes with a tip on saying it purely
 ("mmm", not "muh"). It takes about five minutes and is stored on the device.
+
+The same screen has a **Letter names** tab. Those are optional: the voice says letter names by
+itself, but if it gets one wrong on your tablet, record that letter and your voice replaces it.
+Any recording can be re-done or removed at any time.
 
 Until a sound is recorded the game still works, but falls back to key words ("which one makes the
 sound at the start of moon?") and skips the blending questions that need real sounds.

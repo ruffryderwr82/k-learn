@@ -59,8 +59,10 @@ const game = new Game($('game'), {
   wrong: (q, choice) => {
     if (q.sequence) return audio.play(['Not yet. Listen.', q.item]);
     // name what was picked (by its sound when there is one), then ask again
-    const picked = choice.sound && audio.hasSound(choice.sound) && q.audio ? ['That one says', { s: choice.sound }]
-      : [choice.say ? `That one is ${choice.say}.` : 'Not that one.'];
+    const bySound = choice.sound && audio.hasSound(choice.sound) && promptScript(q).some((part) => part.s);
+    const picked = bySound ? ['That one says', { s: choice.sound }]
+      : choice.names ? ['That one is', ...choice.names.map((name) => ({ name }))]
+        : [choice.say ? `That one is ${choice.say}.` : 'Not that one.'];
     return audio.play([...picked, 'Try again.', { pause: 200 }, ...promptScript(q)]);
   },
   sound: (id) => audio.playSound(id),
@@ -388,7 +390,7 @@ function renderAlbum() {
     const b = document.createElement('button');
     b.className = `sticker ${got ? 'got' : ''}`;
     b.innerHTML = `<span>${l.toUpperCase()}${l}</span><span class="pic" style="${sound ? 'filter:none' : ''}">${info.emoji}</span>`;
-    b.onclick = () => { audio.unlock(); audio.play(audio.hasSound(soundOf(l)) ? [`${info.name} says`, { s: soundOf(l) }, `${info.word}.`] : `${info.name}. ${info.word}.`); };
+    b.onclick = () => { audio.unlock(); audio.play(audio.hasSound(soundOf(l)) ? [{ name: l }, 'says', { s: soundOf(l) }, `${info.word}.`] : [{ name: l }, `${info.word}.`]); };
     letters.append(b);
   }
   const wordsEl = $('albumWords');
@@ -469,7 +471,7 @@ function renderParent() {
       store.save(state);
     };
   });
-  $('optTest').onclick = () => { audio.unlock(); say('Find the letter em. Great job!'); };
+  $('optTest').onclick = () => { audio.unlock(); audio.play(['Find the letter', { name: 'a' }, 'Great job!']); };
   $('optReset').onclick = (e) => {
     // Two taps instead of a browser dialog, which some app views never show.
     if (!e.target.dataset.sure) { e.target.dataset.sure = '1'; e.target.textContent = 'Tap again to erase coins, stars and learning progress'; return; }
@@ -483,34 +485,57 @@ function renderParent() {
 // The tablet's voice cannot say a pure "mmm", so a grown-up records each sound once.
 const SOUND_LABEL = { k: 'c k ck', qu: 'qu', ai: 'ai a_e', ee: 'ee ea', ie: 'i_e', oa: 'oa o_e', ue: 'u_e', oo: 'oo (moon)', uu: 'oo (book)' };
 const soundLabel = (id) => SOUND_LABEL[id] || id;
-let studioAt = null;   // sound being recorded
+let studioTab = 'sounds';
+let studioAt = null;   // clip being recorded
 let studioMsg = '';
+
+// Everything a grown-up can record: the 39 speech sounds, and (optionally) the 26 letter names.
+const STUDIO = {
+  sounds: {
+    ids: Object.keys(SOUNDS),
+    label: soundLabel,
+    tip: (id) => `<p><b>Say:</b> ${SOUNDS[id].tip}</p><p class="eg">${SOUNDS[id].emoji} as at the ${SOUNDS[id].pos} of <b>${SOUNDS[id].word}</b>. Say only the sound, once, right after you tap.</p>`,
+  },
+  names: {
+    ids: Object.keys(LETTERS).map((l) => `name:${l}`),
+    label: (id) => `${id.slice(5).toUpperCase()} ${id.slice(5)}`,
+    tip: (id) => `<p><b>Say the name of the letter ${id.slice(5).toUpperCase()}</b>, as in the alphabet song.</p><p class="eg">Your recording replaces the tablet's voice wherever the game names this letter.</p>`,
+  },
+};
 
 function renderStudio() {
   const el = $('studio');
   if (!el) return;
-  const ids = Object.keys(SOUNDS);
+  const tab = STUDIO[studioTab];
+  const { ids } = tab;
   const done = ids.filter(audio.hasSound).length;
-  if (!studioAt || !SOUNDS[studioAt]) studioAt = ids.find((id) => !audio.hasSound(id)) || ids[0];
-  const S = SOUNDS[studioAt];
+  if (!ids.includes(studioAt)) studioAt = ids.find((id) => !audio.hasSound(id)) || ids[0];
+  const soundsLeft = STUDIO.sounds.ids.filter((id) => !audio.hasSound(id)).length;
+  const intro = studioTab === 'names'
+    ? 'Optional. The tablet\'s voice says letter names, but some voices get one wrong. Record any letter here and your voice is used for it instead.'
+    : soundsLeft ? '<b>Please do this first.</b> Sounding out needs real letter sounds, and the tablet\'s voice can only say letter names. Until a sound is recorded, the game falls back to key words ("the first sound in moon") and cannot do blending. It takes about five minutes.'
+      : 'All sounds are recorded. Tap any one to hear it or record it again.';
   el.innerHTML = `
-    <h3>Letter sounds in your voice <em class="count ${done === ids.length ? 'ok' : ''}">${done} / ${ids.length} recorded</em></h3>
-    <p>${done === ids.length ? 'All sounds are recorded. Tap any one to hear it or record it again.'
-      : '<b>Please do this first.</b> Sounding out needs real letter sounds, and the tablet\'s voice can only say letter names. Until a sound is recorded, the game falls back to key words ("the first sound in moon") and cannot do blending. It takes about five minutes.'}</p>
+    <h3>Your voice <em class="count ${done === ids.length ? 'ok' : ''}">${done} / ${ids.length} recorded</em></h3>
+    <div class="tabs2">
+      <button data-tab="sounds" class="${studioTab === 'sounds' ? 'on' : ''}">Letter sounds</button>
+      <button data-tab="names" class="${studioTab === 'names' ? 'on' : ''}">Letter names</button>
+    </div>
+    <p>${intro}</p>
     <div class="recorder">
-      <div class="big">${soundLabel(studioAt)}</div>
+      <div class="big">${tab.label(studioAt)}</div>
       <div class="how">
-        <p><b>Say:</b> ${S.tip}</p>
-        <p class="eg">${S.emoji} as at the ${S.pos} of <b>${S.word}</b>. Say only the sound, once, right after you tap.</p>
+        ${tab.tip(studioAt)}
         <div>
           <button class="plain rec" id="recGo">● Record</button>
           <button class="plain" id="recPlay" ${audio.hasSound(studioAt) ? '' : 'disabled'}>▶ Listen</button>
+          <button class="plain" id="recDel" ${audio.hasSound(studioAt) ? '' : 'disabled'}>Remove</button>
           <button class="plain" id="recNext">Next →</button>
         </div>
         <p class="msg" id="recMsg">${studioMsg}</p>
       </div>
     </div>
-    <div class="soundgrid">${ids.map((id) => `<button data-snd="${id}" class="${audio.hasSound(id) ? 'ok' : ''} ${id === studioAt ? 'at' : ''}">${soundLabel(id)}</button>`).join('')}</div>`;
+    <div class="soundgrid">${ids.map((id) => `<button data-snd="${id}" class="${audio.hasSound(id) ? 'ok' : ''} ${id === studioAt ? 'at' : ''}">${tab.label(id)}</button>`).join('')}</div>`;
   studioMsg = '';
 
   const next = () => {
@@ -519,6 +544,8 @@ function renderStudio() {
     renderStudio();
   };
   $('recNext').onclick = next;
+  $('recDel').onclick = async () => { await audio.deleteClip(studioAt); studioMsg = 'Removed.'; renderStudio(); };
+  el.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { studioTab = b.dataset.tab; studioAt = null; renderStudio(); }; });
   $('recPlay').onclick = () => { audio.unlock(); audio.play([{ s: studioAt }]); };
   el.querySelectorAll('[data-snd]').forEach((b) => {
     b.onclick = () => { studioAt = b.dataset.snd; renderStudio(); audio.unlock(); if (audio.hasSound(studioAt)) audio.play([{ s: studioAt }]); };
@@ -548,7 +575,7 @@ function renderStudio() {
 
 // A nudge on the title screen until the sounds are recorded.
 function updateNudge() {
-  const missing = Object.keys(SOUNDS).length - audio.soundCount();
+  const missing = Object.keys(SOUNDS).filter((id) => !audio.hasSound(id)).length;
   $('btnParent').textContent = missing ? '🎙 Grown-ups: record the letter sounds (hold here)' : 'Grown-ups: hold here';
 }
 audio.loadClips().then(updateNudge);
