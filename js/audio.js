@@ -96,12 +96,27 @@ if (synth) {
   synth.addEventListener?.('voiceschanged', chooseVoice);
 }
 
-export const isSpeaking = () => !!synth && synth.speaking;
+// Inside the Android app the browser voice does not exist, so use the tablet's own
+// text-to-speech through the native plugin instead.
+const nativeTTS = () => (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins?.TextToSpeech : null);
+let nativeTalking = 0;
+
+export const isSpeaking = () => nativeTalking > 0 || (!!synth && synth.speaking);
 export const lastSpoken = { text: '' }; // exposed for tests and the "say it again" button
 
 export function speak(text, { interrupt = true } = {}) {
   lastSpoken.text = text;
-  if (!settings.voice || !synth || !text) return;
+  if (!settings.voice || !text) return;
+  const tts = nativeTTS();
+  if (tts) {
+    nativeTalking++;
+    // queueStrategy 0 cuts off whatever is being said, 1 waits its turn
+    tts.speak({ text, lang: 'en-US', rate: 0.85, pitch: 1.1, queueStrategy: interrupt ? 0 : 1 })
+      .catch(() => { /* no speech engine installed */ })
+      .finally(() => { nativeTalking--; });
+    return;
+  }
+  if (!synth) return;
   clearTimeout(speakTimer);
   if (interrupt) synth.cancel();
   // iOS drops an utterance queued in the same tick as cancel().
@@ -117,5 +132,6 @@ export function speak(text, { interrupt = true } = {}) {
 
 export function hush() {
   clearTimeout(speakTimer);
+  nativeTTS()?.stop().catch(() => {});
   synth?.cancel();
 }

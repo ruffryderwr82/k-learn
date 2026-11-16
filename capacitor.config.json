@@ -1,0 +1,6 @@
+{
+  "appId": "com.klearn.pip",
+  "appName": "Pip",
+  "webDir": "www",
+  "android": { "backgroundColor": "#63c7ff" }
+}

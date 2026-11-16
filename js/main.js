@@ -368,7 +368,8 @@ function renderParent() {
 }
 
 // ---- offline support ------------------------------------------------------
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+// (Not needed inside the Android app, where the files are already on the device.)
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !window.Capacitor) {
   navigator.serviceWorker.register('sw.js').catch(() => { /* the game works without it */ });
 }
 

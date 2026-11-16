@@ -38,6 +38,24 @@ To put it on an iPad: host the folder anywhere static (GitHub Pages: Settings �
 deploy from branch), open it in Safari, then Share → Add to Home Screen. It then runs
 full screen and works offline.
 
+## Android app (APK)
+
+The game is also packaged as a standalone Android app with Capacitor. Everything is inside
+the APK: no server and no internet needed.
+
+- **Get the APK without installing anything:** every push builds one on GitHub. Open the
+  repo's Actions tab → latest "Android APK" run → download `pip-apk` from Artifacts, unzip,
+  copy `pip.apk` to the tablet and open it (allow "install unknown apps" when asked).
+- **Build it yourself:** with Android Studio (or JDK 21 + Android SDK) installed, run `npm ci && npm run android:apk`.
+  The APK lands in `android/app/build/outputs/apk/debug/`.
+
+Inside the app the voice comes from the tablet's own text-to-speech engine. If it is silent,
+check Settings → Accessibility → Text-to-speech and make sure English voice data is installed.
+
+Builds are signed with the key in `android/app/pip-sideload.keystore` so a new build installs
+over the old one and keeps saved progress. That key is public in this repo, which is fine for
+sideloading at home but not for a store release.
+
 ## Tests
 
 ```sh
