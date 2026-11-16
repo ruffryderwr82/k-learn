@@ -1,5 +1,13 @@
 // Curriculum: what gets taught, in what order, and how a question is built.
 // Everything here is plain data + pure functions so it can be unit tested in Node.
+//
+// The method is systematic synthetic phonics ("sounding out"):
+//   1. teach what sound each letter makes, a few letters at a time, useful ones first
+//   2. start blending those sounds into words straight away
+//   3. practise hearing the sounds inside words (first, last, middle) and spelling by sound
+//   4. only ask the child to read words made of sounds already taught
+//   5. teach the few irregular words by sounding out what can be and marking the tricky part
+import { SOUNDS, soundOf, segment, soundsIn } from './sounds.js';
 
 // Spoken letter names are spelled out so text-to-speech never guesses wrong.
 export const LETTERS = {
@@ -70,6 +78,13 @@ const DECOYS = (
   'beet tray trail boot seat seal soak loaf main mean feel shop stir cart cord bark hose burn'
 ).split(' ');
 
+// For irregular words: which letters do not say what the child expects (taught "by heart").
+export const HEART = {
+  the: [2], a: [0], I: [0], is: [1], to: [1], you: [1, 2], he: [1], she: [2], we: [1], my: [1],
+  go: [1], said: [1, 2], was: [1, 2], are: [0, 1, 2], have: [3], they: [2, 3], what: [1, 2], here: [2, 3], come: [1, 3],
+  like: [3], look: [], and: [], see: [], with: [],
+};
+
 const SIGHT_SETS = [
   ['the', 'a', 'I', 'is', 'to', 'and'],
   ['you', 'he', 'she', 'we', 'my', 'see'],
@@ -106,77 +121,93 @@ const SENTENCE_YN = [
 ];
 
 export const WORLDS = [
-  { id: 'meadow', name: 'Letter Meadow', icon: '🌼', goal: 'Letter names' },
-  { id: 'canyon', name: 'Sound Canyon', icon: '🌵', goal: 'Letter sounds' },
-  { id: 'woods', name: 'Word Woods', icon: '🍄', goal: 'Sounding out words' },
-  { id: 'sky', name: 'Sky Islands', icon: '☁️', goal: 'Sight words, sh ch th, blends' },
+  { id: 'meadow', name: 'Letter Meadow', icon: '🌼', goal: 'The sound each letter makes' },
+  { id: 'canyon', name: 'Sound Canyon', icon: '🌵', goal: 'Hearing sounds in words and blending them' },
+  { id: 'woods', name: 'Word Woods', icon: '🍄', goal: 'Sounding out and spelling short words' },
+  { id: 'sky', name: 'Sky Islands', icon: '☁️', goal: 'sh ch th ck ng, blends, tricky words' },
   { id: 'summit', name: 'Story Summit', icon: '❄️', goal: 'First grade: long vowels and sentences' },
 ];
 
 const words = (s) => s.split(' ');
+const CVC = {
+  a: words('cat hat bat van pan can map cap rat man'),
+  i: words('pig pin lip six kid zip'),
+  o: words('dog fox box pot log cop'),
+  u: words('sun bug bus cup nut tub hug run'),
+  e: words('bed hen web leg ten pen net jet'),
+};
+const ALL_CVC = Object.values(CVC).flat();
+
+// Words that can be spelled by bumping three different letters in order.
+const buildable = (list) => list.filter((w) => w.length === 3 && new Set(w).size === 3 && segment(w).length === 3);
+
+// Question types that ask about a word rather than a letter.
+const WORD_TYPES = new Set(['firstSound', 'lastSound', 'midSound', 'blend', 'soundout', 'build', 'pic2word', 'word2pic']);
 
 function buildLevels() {
   const L = [];
+  // pools: extra item lists for question types that do not use the level's main pool
   const add = (world, title, types, pool, extra = {}) => {
     const prev = L.filter((l) => l.world === world && l.poolKind === extra.poolKind);
     const review = [...new Set(prev.flatMap((l) => l.pool))];
-    L.push({ id: `${WORLDS[world].id}-${L.filter((l) => l.world === world).length + 1}`, world, title, types, pool, review, ...extra });
+    L.push({ id: `${WORLDS[world].id}-${L.filter((l) => l.world === world).length + 1}`, world, title, types, pool, review, pools: {}, ...extra });
   };
-
   // Each world ends with a boss fight that asks about everything taught in that world.
-  const boss = (world, types, poolKind) => {
+  const boss = (world, types, poolKind, pools = {}) => {
     const pool = [...new Set(L.filter((l) => l.world === world && l.poolKind === poolKind).flatMap((l) => l.pool))];
-    add(world, 'Boss', types, pool, { poolKind, boss: true, id: `${WORLDS[world].id}-boss`, review: [] });
+    add(world, 'Boss', types, pool, { poolKind, boss: true, id: `${WORLDS[world].id}-boss`, review: [], pools });
   };
 
-  // World 1: letter names, upper and lower case.
-  LETTER_GROUPS.forEach((g, i) =>
-    add(0, g.join(' ').toUpperCase(), i === 0 ? ['nameU', 'nameL'] : ['nameU', 'nameL', 'match'], g, { poolKind: 'letter' }));
-  add(0, 'A to Z', ['nameU', 'nameL', 'match'], Object.keys(LETTERS), { poolKind: 'letter' });
+  // World 1: the sound each letter makes (and its name), a few letters at a time.
+  // From the second set on there are enough letters to blend real words, so blending starts here.
+  const taught = [];
+  LETTER_GROUPS.forEach((g) => {
+    taught.push(...g);
+    const decodable = ALL_CVC.filter((w) => [...w].every((ch) => taught.includes(ch)));
+    add(0, g.join(' '), ['hearSound', 'hearSound', 'starts', 'nameL', 'nameU', 'match', 'blend'], g, { poolKind: 'letter', pools: { blend: decodable } });
+  });
+  add(0, 'a to z', ['hearSound', 'hearSound', 'starts', 'nameL', 'match', 'blend'], Object.keys(LETTERS), { poolKind: 'letter', pools: { blend: ALL_CVC } });
+  boss(0, ['hearSound', 'starts'], 'letter');
 
-  boss(0, ['nameU', 'nameL', 'match'], 'letter');
+  // World 2: hear the sounds inside words, then push sounds together to read.
+  add(1, 'first sound', ['firstSound'], CVC.a, { poolKind: 'word' });
+  add(1, 'last sound', ['lastSound', 'firstSound'], [...CVC.i, ...CVC.o], { poolKind: 'word' });
+  add(1, 'middle sound', ['midSound', 'lastSound'], [...CVC.u, ...CVC.e], { poolKind: 'word' });
+  add(1, 'blend it', ['blend'], [...CVC.a, ...CVC.i], { poolKind: 'blend' });
+  add(1, 'blend more', ['blend'], [...CVC.o, ...CVC.u, ...CVC.e], { poolKind: 'blend' });
+  add(1, 'sound buttons', ['soundout', 'blend'], [...CVC.a, ...CVC.i], { poolKind: 'blend' });
+  add(1, 'more buttons', ['soundout', 'soundout', 'blend'], [...CVC.o, ...CVC.u, ...CVC.e], { poolKind: 'blend' });
+  add(1, 'build a word', ['build', 'soundout'], buildable([...CVC.a, ...CVC.i, ...CVC.o]), { poolKind: 'spell' });
+  boss(1, ['soundout', 'blend'], 'blend');
 
-  // World 2: letter sounds.
-  LETTER_GROUPS.forEach((g) => add(1, g.join(' '), ['sound', 'starts'], g, { poolKind: 'letter' }));
-  add(1, 'a to z', ['sound', 'starts'], Object.keys(LETTERS), { poolKind: 'letter' });
-
-  boss(1, ['sound', 'starts'], 'letter');
-
-  // World 3: blending three-sound words, one vowel at a time.
-  const cvc = {
-    'short a': words('cat hat bat van pan can map cap rat man'),
-    'short i': words('pig pin lip six kid zip'),
-    'short o': words('dog fox box pot log cop'),
-    'short u': words('sun bug bus cup nut tub hug run'),
-    'short e': words('bed hen web leg ten pen net jet'),
-  };
-  for (const [title, pool] of Object.entries(cvc)) add(2, title, ['pic2word', 'word2pic'], pool, { poolKind: 'word' });
+  // World 3: read and spell short-vowel words without help, one vowel at a time.
+  for (const [v, pool] of Object.entries(CVC)) {
+    add(2, `short ${v}`, ['word2pic', 'pic2word', 'build'], pool, { poolKind: 'word', pools: { build: buildable(pool) } });
+  }
   add(2, 'the, a, I...', ['hear'], SIGHT_SETS[0], { poolKind: 'sight' });
-  add(2, 'mix it up', ['pic2word', 'word2pic', 'word2pic'], Object.values(cvc).flat(), { poolKind: 'word' });
+  add(2, 'mix it up', ['word2pic', 'word2pic', 'pic2word', 'build'], ALL_CVC, { poolKind: 'word', pools: { build: buildable(ALL_CVC) } });
+  boss(2, ['word2pic', 'pic2word'], 'word');
 
-  boss(2, ['pic2word', 'word2pic'], 'word');
-
-  // World 4: sight words, digraphs and blends.
-  add(3, 'sh ch th', ['pic2word', 'word2pic'], words('ship fish shell chick bath'), { poolKind: 'word' });
+  // World 4: two letters, one sound. The new sound is taught first, then read in words.
+  add(3, 'sh ch th', ['word2pic', 'hearSound', 'pic2word'], words('ship fish shell chick bath'), { poolKind: 'word', pools: { hearSound: ['sh', 'ch', 'th'] } });
   add(3, 'you, he, she...', ['hear'], SIGHT_SETS[1], { poolKind: 'sight' });
-  add(3, 'ck ng', ['pic2word', 'word2pic'], words('duck sock lock king ring'), { poolKind: 'word' });
-  add(3, 'blends', ['pic2word', 'word2pic'], words('frog crab drum flag sled swim'), { poolKind: 'word' });
+  add(3, 'ck ng', ['word2pic', 'hearSound', 'pic2word'], words('duck sock lock king ring'), { poolKind: 'word', pools: { hearSound: ['ck', 'ng'] } });
+  add(3, 'blends', ['word2pic', 'pic2word'], words('frog crab drum flag sled swim'), { poolKind: 'word' });
   add(3, 'like, go, said...', ['hear'], SIGHT_SETS[2], { poolKind: 'sight' });
-  add(3, 'more blends', ['pic2word', 'word2pic'], words('clap stop hand milk tent gift'), { poolKind: 'word' });
+  add(3, 'more blends', ['word2pic', 'pic2word'], words('clap stop hand milk tent gift'), { poolKind: 'word' });
   add(3, 'silly or true?', ['yesno'], SENTENCE_YN.slice(0, 9).map((_, i) => i), { poolKind: 'yn' });
-
-  boss(3, ['pic2word', 'word2pic'], 'word');
+  boss(3, ['word2pic', 'pic2word'], 'word', { hearSound: ['sh', 'ch', 'th', 'ck', 'ng'] });
 
   // World 5: first grade.
-  add(4, 'magic e', ['pic2word', 'word2pic'], words('cake bike kite bone rose nose'), { poolKind: 'word' });
-  add(4, 'more magic e', ['pic2word', 'word2pic'], words('snake whale five nine home cone'), { poolKind: 'word' });
+  add(4, 'magic e', ['word2pic', 'pic2word'], words('cake bike kite bone rose nose'), { poolKind: 'word' });
+  add(4, 'more magic e', ['word2pic', 'pic2word'], words('snake whale five nine home cone'), { poolKind: 'word' });
   add(4, 'have, they, with...', ['hear'], SIGHT_SETS[3], { poolKind: 'sight' });
-  add(4, 'ee ai', ['pic2word', 'word2pic'], words('bee tree feet sheep rain snail train'), { poolKind: 'word' });
-  add(4, 'oa ea oo', ['pic2word', 'word2pic'], words('boat goat soap leaf moon spoon book'), { poolKind: 'word' });
-  add(4, 'ar or ir', ['pic2word', 'word2pic'], words('star car corn fork bird shark horse'), { poolKind: 'word' });
+  add(4, 'ee ai', ['word2pic', 'hearSound', 'pic2word'], words('bee tree feet sheep rain snail train'), { poolKind: 'word', pools: { hearSound: ['ee', 'ai'] } });
+  add(4, 'oa ea oo', ['word2pic', 'hearSound', 'pic2word'], words('boat goat soap leaf moon spoon book'), { poolKind: 'word', pools: { hearSound: ['oa', 'oo'] } });
+  add(4, 'ar or ir', ['word2pic', 'hearSound', 'pic2word'], words('star car corn fork bird shark horse'), { poolKind: 'word', pools: { hearSound: ['ar', 'or', 'ir'] } });
   add(4, 'read and find', ['sentpic'], SENTENCE_PICS.map((_, i) => i), { poolKind: 'sp' });
   add(4, 'story time', ['sentpic', 'yesno2'], SENTENCE_PICS.map((_, i) => i), { poolKind: 'sp' });
-  boss(4, ['pic2word', 'word2pic'], 'word');
+  boss(4, ['word2pic', 'pic2word'], 'word');
   return L;
 }
 
@@ -215,26 +246,37 @@ export function shuffle(arr, rng) {
   return a;
 }
 
-// Which mastery record a question type reads and writes.
-const KEY_PREFIX = { nameU: 'n', nameL: 'n', match: 'n', sound: 's', starts: 's', pic2word: 'w', word2pic: 'w', hear: 'x', sentpic: 't', yesno: 'y', yesno2: 'y' };
+// Which mastery record a question type reads and writes:
+// s = letter sound, n = letter name, p = hearing sounds in a word, b = blending,
+// e = spelling (encoding), w = reading a word unaided, x = tricky word, t / y = sentences.
+const KEY_PREFIX = {
+  hearSound: 's', starts: 's', nameU: 'n', nameL: 'n', match: 'n',
+  firstSound: 'p', lastSound: 'p', midSound: 'p', blend: 'b', soundout: 'b', build: 'e',
+  pic2word: 'w', word2pic: 'w', hear: 'x', sentpic: 't', yesno: 'y', yesno2: 'y',
+};
 export const skillKey = (type, item) => `${KEY_PREFIX[type]}:${item}`;
 
-// The things a world teaches, as mastery keys. Used to decide when its boss door opens.
+// The things a world must have mastered before its boss door opens: whatever the boss
+// itself asks about (letter sounds, then blending, then reading words).
 export function worldSkills(world) {
+  const boss = LEVELS.find((l) => l.world === world && l.boss);
   const keys = new Set();
   for (const l of LEVELS) {
-    if (l.world !== world || l.boss || !['letter', 'word', 'sight'].includes(l.poolKind)) continue;
+    if (l.world !== world || l.boss || l.poolKind !== boss.poolKind) continue;
     for (const item of l.pool) keys.add(skillKey(l.types[0], item));
   }
   return [...keys];
 }
 
+const poolFor = (level, type) => level.pools[type] || level.pool;
+
 // Pick what to ask about: mostly this level's new items, sometimes review,
 // and always leaning toward whatever the child knows least.
 function chooseItem(level, type, mastery, rng, avoid) {
-  const useReview = level.review.length > 0 && rng() < 0.3;
-  let pool = (useReview ? level.review : level.pool).filter((it) => it !== avoid);
-  if (!pool.length) pool = level.pool;
+  const main = poolFor(level, type);
+  const useReview = main === level.pool && level.review.length > 0 && rng() < 0.3;
+  let pool = (useReview ? level.review : main).filter((it) => it !== avoid);
+  if (!pool.length) pool = main;
   const weights = pool.map((it) => {
     const m = mastery[skillKey(type, it)];
     return 5 - Math.min(m ? m.b : 0, 4);
@@ -274,10 +316,15 @@ function otherPictures(word, n, rng) {
   return out;
 }
 
-function otherLetters(level, letter, n, rng) {
-  const known = [...new Set([...level.pool, ...level.review])].filter((l) => l !== letter);
-  const rest = Object.keys(LETTERS).filter((l) => l !== letter && !known.includes(l));
-  return [...shuffle(known, rng), ...shuffle(rest, rng)].slice(0, n);
+// Other letters to offer. Never one that makes the same sound (c and k), and
+// known letters first so the choice is between things already taught.
+function otherLetters(level, letter, n, rng, only = Object.keys(LETTERS)) {
+  const ok = (l) => l !== letter && soundOf(l) !== soundOf(letter) && only.includes(l);
+  const known = [...new Set([...level.pool, ...level.review])].filter((l) => LETTERS[l] && ok(l));
+  const rest = Object.keys(LETTERS).filter((l) => ok(l) && !known.includes(l));
+  // ...and no two that sound the same as each other
+  const heard = new Set();
+  return [...shuffle(known, rng), ...shuffle(rest, rng)].filter((l) => !heard.has(soundOf(l)) && heard.add(soundOf(l))).slice(0, n);
 }
 
 function finish(q, right, wrongs, rng) {
@@ -285,62 +332,173 @@ function finish(q, right, wrongs, rng) {
   return { ...q, choices, answer: choices.indexOf(right) };
 }
 
-const letterChoice = (l, upper) => ({ label: upper ? l.toUpperCase() : l, kind: 'letter', say: LETTERS[l].name });
+const spell = (g) => [...g].map((ch) => LETTERS[ch].name).join(' ');
+const letterChoice = (l, upper) => ({ label: upper ? l.toUpperCase() : l, kind: 'letter', say: spell(l), sound: soundOf(l) });
 const wordChoice = (w) => ({ label: w, kind: 'word', say: w });
 const picChoice = (w) => ({ label: PICTURES[w], kind: 'emoji', say: w });
 
+// Audio scripts are lists of: text to speak, { s: sound id } to play a recorded sound, or { pause: ms }.
+const snd = (s) => ({ s });
+const stretched = (word) => soundsIn(word).flatMap((s, i) => (i ? [{ pause: 350 }, snd(s)] : [snd(s)]));
+const DIGRAPHS = ['sh', 'ch', 'th', 'ck', 'ng', 'ee', 'ai', 'oa', 'oo', 'ar', 'or', 'ir'];
+const CONSONANTS = Object.keys(LETTERS).filter((l) => !'aeiou'.includes(l));
+
 /**
  * Build one question for a level.
- * Returns { type, item, key, say, show, choices[{label,kind,say}], answer, praise }.
+ *
+ * has(soundId) says whether a recording of that sound exists. Questions that only make
+ * sense with real letter sounds (blending, "which letter says mmm") fall back to a
+ * key-word version when the recording is missing.
+ *
+ * Returns { type, item, key, say, audio?, show, choices[{label,kind,say}], answer, praise,
+ *           praiseAudio?, soundOut?, sequence? }.
+ *   say / praise   plain text, always present
+ *   audio / praiseAudio   richer script using recorded sounds, when available
+ *   soundOut       sounds to play when the child asks for help with a printed word
+ *   sequence       for spelling: the order the blocks must be bumped in
  */
-export function makeQuestion(level, mastery = {}, rng = Math.random, avoid = null) {
-  let type = pick(level.types, rng);
-  if (type === 'yesno2') {
-    const i = Math.floor(rng() * SENTENCE_YN.length);
-    return yesNo('yesno', i, rng);
-  }
+export function makeQuestion(level, mastery = {}, rng = Math.random, avoid = null, has = () => false) {
+  const usable = level.types.filter((t) => t === 'yesno2' || poolFor(level, t).length);
+  let type = pick(usable, rng);
+  if (type === 'yesno2') return yesNo('yesno', Math.floor(rng() * SENTENCE_YN.length));
   const item = chooseItem(level, type, mastery, rng, avoid);
   const base = { type, item, key: skillKey(type, item) };
+  const hasAll = (ids) => ids.every(has);
+
+  // Without recordings these become their key-word cousins (same mastery key).
+  if ((type === 'blend' || type === 'soundout') && !hasAll(soundsIn(item))) type = type === 'blend' ? 'firstSound' : 'word2pic';
+  base.type = type;
 
   switch (type) {
+    case 'hearSound': {
+      // The core of phonics: hear a sound, find the letter(s) that spell it.
+      const sid = soundOf(item);
+      const S = SOUNDS[sid];
+      const single = item.length === 1;
+      const others = single ? otherLetters(level, item, 2, rng) : shuffle(DIGRAPHS.filter((d) => d !== item && soundOf(d) !== sid), rng).slice(0, 2);
+      const where = { start: 'start', end: 'end', middle: 'middle' }[S.pos];
+      const q = {
+        ...base,
+        say: `${S.word}. Which one makes the sound at the ${where} of ${S.word}?`,
+        show: { emoji: S.emoji },
+        praise: `Yes! ${spell(item)}. ${S.word}.`,
+      };
+      if (has(sid)) {
+        q.audio = ['Which one says', snd(sid), { pause: 200 }, snd(sid)];
+        q.show = null;
+        q.praiseAudio = [snd(sid), { pause: 150 }, `${S.word}.`];
+      }
+      return finish(q, letterChoice(item, false), others.map((l) => letterChoice(l, false)), rng);
+    }
+    case 'starts': {
+      const L = LETTERS[item];
+      const sid = soundOf(item);
+      const where = L.end ? 'ends' : 'starts';
+      const pic = (l) => ({ label: LETTERS[l].emoji, kind: 'emoji', say: LETTERS[l].word });
+      const q = { ...base, say: `This is ${L.name}. Which one ${where} with ${L.name}?`, show: { text: item }, praise: `${L.word} ${where} with ${L.name}!` };
+      if (has(sid)) {
+        q.audio = ['This says', snd(sid), `Which one ${where} with`, snd(sid)];
+        q.praiseAudio = [snd(sid), { pause: 150 }, `${L.word}!`];
+      }
+      return finish(q, pic(item), otherLetters(level, item, 2, rng).map(pic), rng);
+    }
     case 'nameU':
     case 'nameL': {
       const up = type === 'nameU';
       const L = LETTERS[item];
-      return finish({ ...base, say: `Find the letter ${L.name}.`, show: null, praise: `${L.name}!` },
-        letterChoice(item, up), otherLetters(level, item, 2, rng).map((l) => letterChoice(l, up)), rng);
+      const q = { ...base, say: `Find the letter ${L.name}.`, show: null, praise: `${L.name}!` };
+      if (has(soundOf(item))) q.praiseAudio = [`${L.name} says`, snd(soundOf(item))];
+      return finish(q, letterChoice(item, up), otherLetters(level, item, 2, rng).map((l) => letterChoice(l, up)), rng);
     }
     case 'match': {
       const toLower = rng() < 0.5;
       const L = LETTERS[item];
-      return finish({ ...base, say: `This is ${L.name}. Find its ${toLower ? 'little' : 'big'} partner.`, show: { text: toLower ? item.toUpperCase() : item }, praise: `${L.name}!` },
-        letterChoice(item, !toLower), otherLetters(level, item, 2, rng).map((l) => letterChoice(l, !toLower)), rng);
+      const q = { ...base, say: `This is ${L.name}. Find its ${toLower ? 'little' : 'big'} partner.`, show: { text: toLower ? item.toUpperCase() : item }, praise: `${L.name}!` };
+      if (has(soundOf(item))) q.praiseAudio = [`${L.name} says`, snd(soundOf(item))];
+      return finish(q, letterChoice(item, !toLower), otherLetters(level, item, 2, rng).map((l) => letterChoice(l, !toLower)), rng);
     }
-    case 'sound': {
-      const L = LETTERS[item];
-      const where = L.end ? 'end' : 'start';
-      return finish({ ...base, say: `${L.word}. Which letter does ${L.word} ${where} with?`, show: { emoji: L.emoji }, praise: `Yes! ${L.word} ${where}s with ${L.name}.` },
-        letterChoice(item, false), otherLetters(level, item, 2, rng).map((l) => letterChoice(l, false)), rng);
+    case 'firstSound':
+    case 'lastSound':
+    case 'midSound': {
+      // Hearing the separate sounds inside a spoken word (no print: this is ear training).
+      const seg = segment(item);
+      const at = type === 'firstSound' ? 0 : type === 'lastSound' ? seg.length - 1 : 1;
+      const g = seg[at].g;
+      const which = { firstSound: 'first', lastSound: 'last', midSound: 'middle' }[type];
+      const isVowel = 'aeiou'.includes(g);
+      const q = {
+        ...base,
+        say: `${item}. What is the ${which} sound in ${item}?`,
+        show: { emoji: PICTURES[item] },
+        praise: `Yes! ${spell(g)}. ${item}.`,
+      };
+      if (has(seg[at].s)) q.praiseAudio = [snd(seg[at].s), { pause: 150 }, `${item}.`];
+      return finish(q, letterChoice(g, false), otherLetters(level, g, 2, rng, isVowel ? [...'aeiou'] : CONSONANTS).map((l) => letterChoice(l, false)), rng);
     }
-    case 'starts': {
-      const L = LETTERS[item];
-      const where = L.end ? 'ends' : 'starts';
-      const pic = (l) => ({ label: LETTERS[l].emoji, kind: 'emoji', say: LETTERS[l].word });
-      return finish({ ...base, say: `This is ${L.name}. Which one ${where} with ${L.name}?`, show: { text: item }, praise: `${L.word} ${where} with ${L.name}!` },
-        pic(item), otherLetters(level, item, 2, rng).map(pic), rng);
-    }
-    case 'pic2word':
-      return finish({ ...base, say: `${item}. Find the word ${item}.`, show: { emoji: PICTURES[item] }, praise: `${item}!` },
-        wordChoice(item), similarWords(item, 2, rng).map(wordChoice), rng);
+    case 'blend':
+      // Hear the sounds one at a time, push them together, find the picture. No print.
+      return finish({
+        ...base,
+        say: 'Listen to the sounds. What word is it?',
+        audio: [...stretched(item), { pause: 300 }, 'What word is it?'],
+        show: null,
+        praise: `${item}!`,
+        praiseAudio: [...stretched(item), { pause: 250 }, `${item}!`],
+      }, picChoice(item), otherPictures(item, 2, rng).map(picChoice), rng);
+    case 'soundout':
+      // The same, now with the letters in view and the game modelling each sound.
+      return finish({
+        ...base,
+        say: 'Sound it out. Find the picture.',
+        audio: ['Sound it out.', ...stretched(item)],
+        show: { word: item },
+        soundOut: soundsIn(item),
+        praise: `${item}!`,
+        praiseAudio: [...stretched(item), { pause: 250 }, `${item}!`],
+      }, picChoice(item), otherPictures(item, 2, rng).map(picChoice), rng);
     case 'word2pic':
-      return finish({ ...base, say: 'Read the word. Find the picture.', show: { text: item }, praise: `${item}!` },
-        picChoice(item), otherPictures(item, 2, rng).map(picChoice), rng);
+      // Reading unaided. Tapping the word plays its sounds, never the whole word.
+      return finish({
+        ...base,
+        say: 'Sound it out. Find the picture.',
+        show: { word: item },
+        soundOut: soundsIn(item),
+        praise: `${item}!`,
+        praiseAudio: hasAll(soundsIn(item)) ? [...stretched(item), { pause: 250 }, `${item}!`] : undefined,
+      }, picChoice(item), otherPictures(item, 2, rng).map(picChoice), rng);
+    case 'pic2word':
+      return finish({
+        ...base,
+        say: `${item}. Find the word ${item}.`,
+        show: { emoji: PICTURES[item] },
+        praise: `${item}!`,
+        praiseAudio: hasAll(soundsIn(item)) ? [...stretched(item), { pause: 250 }, `${item}!`] : undefined,
+      }, wordChoice(item), similarWords(item, 2, rng).map(wordChoice), rng);
+    case 'build': {
+      // Spelling by sound: say the word, pull it apart, bump each letter in order.
+      const letters = [...item];
+      const order = shuffle([0, 1, 2], rng);
+      const choices = order.map((i) => letterChoice(letters[i], false));
+      return {
+        ...base,
+        say: `${item}. Spell ${item}. Bump the sounds in order.`,
+        show: { emoji: PICTURES[item], slots: letters },
+        praise: `${item}!`,
+        praiseAudio: hasAll(soundsIn(item)) ? [...stretched(item), { pause: 250 }, `${item}!`] : undefined,
+        choices,
+        answer: order.indexOf(0),
+        sequence: [0, 1, 2].map((i) => order.indexOf(i)),
+      };
+    }
     case 'hear': {
-      const all = SIGHT_SETS.flat().filter((w) => w !== item && w.toLowerCase() !== item.toLowerCase());
+      // Tricky words: the letters that do not say what they should are marked with a heart.
+      const all = SIGHT_SETS.flat().filter((w) => w.toLowerCase() !== item.toLowerCase());
       const near = shuffle(all.filter((w) => w[0].toLowerCase() === item[0].toLowerCase() || w.length === item.length), rng);
       const wrongs = [...near, ...shuffle(all, rng)].filter((w, i, a) => a.indexOf(w) === i).slice(0, 2);
-      return finish({ ...base, say: `Find the word: ${item}.`, show: null, praise: `${item}!` },
-        wordChoice(item), wrongs.map(wordChoice), rng);
+      const heart = HEART[item] || [];
+      const tricky = heart.length && heart.length < item.length ? ` The tricky part is ${heart.map((i) => LETTERS[item[i].toLowerCase()].name).join(' ')}.` : '';
+      const c = (w) => ({ ...wordChoice(w), heart: HEART[w] || [] });
+      return finish({ ...base, say: `Find the word: ${item}.`, show: null, praise: `${item}!${tricky}` }, c(item), wrongs.map(c), rng);
     }
     case 'sentpic': {
       const [text, right, wrong] = SENTENCE_PICS[item];
@@ -348,13 +506,13 @@ export function makeQuestion(level, mastery = {}, rng = Math.random, avoid = nul
       return finish({ ...base, say: 'Read it. Find the picture.', show: { text, long: true }, praise: text }, c(right), wrong.map(c), rng);
     }
     case 'yesno':
-      return yesNo(type, item, rng);
+      return yesNo(type, item);
     default:
       throw new Error(`unknown question type ${type}`);
   }
 }
 
-function yesNo(type, i, rng) {
+function yesNo(type, i) {
   const [text, yes] = SENTENCE_YN[i];
   const choices = [{ label: '👍', kind: 'emoji', say: null }, { label: '👎', kind: 'emoji', say: null }];
   return {

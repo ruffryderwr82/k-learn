@@ -88,7 +88,6 @@ export function music(world) {
 // ---- voice --------------------------------------------------------------
 const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
 let voice = null;
-let speakTimer = null;
 
 function chooseVoice() {
   if (!synth) return;
@@ -105,39 +104,196 @@ if (synth) {
 // Inside the Android app the browser voice does not exist, so use the tablet's own
 // text-to-speech through the native plugin instead.
 const nativeTTS = () => (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins?.TextToSpeech : null);
-let nativeTalking = 0;
+let talking = 0;
 
-export const isSpeaking = () => nativeTalking > 0 || (!!synth && synth.speaking);
-export const lastSpoken = { text: '' }; // exposed for tests and the "say it again" button
+export const isSpeaking = () => talking > 0 || (!!synth && synth.speaking);
+export const lastSpoken = { text: '' }; // what was said last, as text (for tests)
 
-export function speak(text, { interrupt = true } = {}) {
-  lastSpoken.text = text;
-  if (!settings.voice || !text) return;
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Speak one piece of text and resolve when it has finished. */
+function utter(text) {
+  if (!settings.voice || !text) return Promise.resolve();
   const tts = nativeTTS();
-  if (tts) {
-    nativeTalking++;
-    // queueStrategy 0 cuts off whatever is being said, 1 waits its turn
-    tts.speak({ text, lang: 'en-US', rate: 0.85, pitch: 1.1, queueStrategy: interrupt ? 0 : 1 })
-      .catch(() => { /* no speech engine installed */ })
-      .finally(() => { nativeTalking--; });
-    return;
-  }
-  if (!synth) return;
-  clearTimeout(speakTimer);
-  if (interrupt) synth.cancel();
-  // iOS drops an utterance queued in the same tick as cancel().
-  speakTimer = setTimeout(() => {
+  if (tts) return tts.speak({ text, lang: 'en-US', rate: 0.85, pitch: 1.1, queueStrategy: 0 }).catch(() => { /* no speech engine installed */ });
+  if (!synth) return Promise.resolve();
+  return new Promise((resolve) => {
     const u = new SpeechSynthesisUtterance(text);
     if (voice) u.voice = voice;
     u.lang = 'en-US';
     u.rate = 0.85;
     u.pitch = 1.1;
+    // some browsers never fire "end", so never wait forever
+    const giveUp = setTimeout(resolve, 1500 + text.length * 110);
+    u.onend = u.onerror = () => { clearTimeout(giveUp); resolve(); };
     synth.speak(u);
-  }, interrupt ? 80 : 0);
+  });
 }
 
+let playId = 0; // bumping this cancels whatever is playing
+
+/**
+ * Play a script: a list of text to speak, { s: soundId } recorded sounds and { pause: ms }.
+ * A plain string works too. Starting a new script stops the one before it.
+ */
+export async function play(script) {
+  const parts = typeof script === 'string' ? [script] : script.filter(Boolean);
+  lastSpoken.text = parts.map((p) => (typeof p === 'string' ? p : p.s ? `/${p.s}/` : '')).filter(Boolean).join(' ');
+  hush();
+  const id = playId;
+  talking++;
+  try {
+    await wait(80); // iOS drops speech queued in the same tick as a cancel
+    for (const part of parts) {
+      if (id !== playId) return;
+      if (typeof part === 'string') await utter(part);
+      else if (part.pause) await wait(part.pause);
+      else if (part.s) await playSound(part.s);
+    }
+  } finally { talking--; }
+}
+
+export const speak = (text) => play(text);
+
 export function hush() {
-  clearTimeout(speakTimer);
-  nativeTTS()?.stop().catch(() => {});
+  playId++;
   synth?.cancel();
+  nativeTTS()?.stop().catch(() => {});
+  if (clipNode) { try { clipNode.stop(); } catch { /* already stopped */ } clipNode = null; }
+}
+
+// ---- recorded letter sounds ----------------------------------------------
+// A grown-up records each sound once. Clips are trimmed, stored on the device
+// (IndexedDB) and played through Web Audio so they can be sequenced tightly for blending.
+const clips = new Map(); // soundId -> { rate, pcm: Float32Array }
+let clipNode = null;
+let dbPromise = null;
+
+function db() {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open('k-learn-sounds', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('clips');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return dbPromise;
+}
+
+const tx = async (mode, fn) => {
+  const d = await db();
+  return new Promise((resolve, reject) => {
+    const t = d.transaction('clips', mode);
+    const out = fn(t.objectStore('clips'));
+    t.oncomplete = () => resolve(out.result);
+    t.onerror = () => reject(t.error);
+  });
+};
+
+/** Load saved recordings. Safe to call when storage is unavailable. */
+export async function loadClips() {
+  try {
+    const d = await db();
+    await new Promise((resolve, reject) => {
+      const req = d.transaction('clips').objectStore('clips').openCursor();
+      req.onsuccess = () => {
+        const c = req.result;
+        if (!c) return resolve();
+        clips.set(c.key, { rate: c.value.rate, pcm: new Float32Array(c.value.pcm) });
+        c.continue();
+      };
+      req.onerror = () => reject(req.error);
+    });
+  } catch { /* no recordings available */ }
+  return clips.size;
+}
+
+export const hasSound = (id) => clips.has(id);
+export const soundCount = () => clips.size;
+
+export function playSound(id) {
+  const clip = clips.get(id);
+  if (!clip || !ctx || !settings.voice) return Promise.resolve();
+  return new Promise((resolve) => {
+    const buf = ctx.createBuffer(1, clip.pcm.length, clip.rate);
+    buf.copyToChannel(clip.pcm, 0);
+    const node = ctx.createBufferSource();
+    node.buffer = buf;
+    const g = ctx.createGain();
+    g.gain.value = 1.8; // voice sits above the music and effects
+    node.connect(g).connect(ctx.destination);
+    node.onended = resolve;
+    clipNode = node;
+    node.start();
+    setTimeout(resolve, (clip.pcm.length / clip.rate) * 1000 + 300); // in case "ended" never fires
+  });
+}
+
+/** Cut silence off both ends and bring the level up, so every sound starts at once and is as loud as the others. */
+export function trim(pcm, rate) {
+  let peak = 0;
+  for (let i = 0; i < pcm.length; i++) peak = Math.max(peak, Math.abs(pcm[i]));
+  if (peak < 0.02) return null; // nothing was heard
+  const gate = peak * 0.08;
+  let a = 0;
+  let b = pcm.length - 1;
+  while (a < b && Math.abs(pcm[a]) < gate) a++;
+  while (b > a && Math.abs(pcm[b]) < gate) b--;
+  const pad = Math.floor(rate * 0.03);
+  a = Math.max(0, a - pad);
+  b = Math.min(pcm.length - 1, b + pad * 2);
+  const out = pcm.slice(a, b + 1);
+  const k = 0.9 / peak;
+  const fade = Math.min(pad, out.length >> 1);
+  for (let i = 0; i < out.length; i++) {
+    let v = out[i] * k;
+    if (i < fade) v *= i / fade;
+    if (out.length - i <= fade) v *= (out.length - i) / fade;
+    out[i] = v;
+  }
+  return out;
+}
+
+export async function saveClip(id, pcm, rate) {
+  clips.set(id, { rate, pcm });
+  try { await tx('readwrite', (s) => s.put({ rate, pcm: pcm.buffer }, id)); } catch { /* kept for this session only */ }
+}
+
+export async function deleteClip(id) {
+  clips.delete(id);
+  try { await tx('readwrite', (s) => s.delete(id)); } catch { /* ignore */ }
+}
+
+let micStream = null;
+
+/** Ask for the microphone. Throws if it is refused or missing. */
+export async function openMic() {
+  unlock();
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error('This device or view cannot record.');
+  if (!micStream) micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true } });
+  return micStream;
+}
+
+export function closeMic() {
+  micStream?.getTracks().forEach((t) => t.stop());
+  micStream = null;
+}
+
+/** Record for up to `ms`, then trim and save as sound `id`. Resolves true if something was heard. */
+export async function record(id, ms = 1800) {
+  const stream = await openMic();
+  const rec = new MediaRecorder(stream);
+  const chunks = [];
+  rec.ondataavailable = (e) => chunks.push(e.data);
+  const stopped = new Promise((r) => { rec.onstop = r; });
+  rec.start();
+  await wait(ms);
+  rec.stop();
+  await stopped;
+  const raw = await new Blob(chunks, { type: rec.mimeType }).arrayBuffer();
+  const decoded = await ctx.decodeAudioData(raw);
+  const pcm = trim(decoded.getChannelData(0).slice(), decoded.sampleRate);
+  if (!pcm) return false;
+  await saveClip(id, pcm, decoded.sampleRate);
+  return true;
 }

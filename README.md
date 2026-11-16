@@ -6,22 +6,52 @@ game mechanic: every gate opens by bumping the right answer block with your head
 
 Made for touch on an iPad. Also works with a keyboard (arrows + space) and on phones.
 
-## What it teaches
+## How it teaches reading
 
-| World | Skill | How it is asked |
+The game follows **systematic synthetic phonics**, the sounding-out method used by structured
+literacy programs:
+
+1. **Sounds first.** Each letter is taught by the sound it makes (its name comes along with it),
+   a few letters at a time in a useful order (s a t p, i n m d ...), not A to Z.
+2. **Blend straight away.** As soon as enough letters are known, he hears "m ... a ... p" and finds
+   the picture. Words only ever use letters already taught.
+3. **Hear the sounds inside words.** First, last and middle sound of a spoken word.
+4. **Read with sound buttons.** A printed word has a dot under each sound (a bar under two letters
+   that share one, like sh). Tapping the word plays its sounds one by one. It never says the whole
+   word for him: the blending is his job.
+5. **Spell by sound.** Hear a word and bump its letters in order.
+6. **Tricky words by heart.** Irregular words (the, said, was) show the letters that break the rules in red.
+
+| World | Focus | Example question |
 | --- | --- | --- |
-| Letter Meadow | Letter names, upper and lower case | Hear "find the letter M"; match big letters to little ones |
-| Sound Canyon | Letter sounds | See and hear "moon", pick the letter it starts with; see a letter, pick the picture |
-| Word Woods | Sounding out short-vowel words, first sight words | See a picture, pick the word among look-alikes (cat / cot / cap); read a word, pick the picture |
-| Sky Islands | sh ch th ck ng, blends, more sight words, first sentences | Same, plus "silly or true?" sentences |
-| Story Summit (1st grade) | Magic e, vowel teams, r-controlled vowels, sentences | Read a sentence, pick the picture or decide if it is true |
+| Letter Meadow | The sound of each letter; first blending | "Which one says mmm?" |
+| Sound Canyon | Hearing sounds in words, blending, sound buttons, first spelling | "c ... a ... t. What word is it?" |
+| Word Woods | Reading and spelling short-vowel words unaided; first tricky words | Read **pot**, find the picture |
+| Sky Islands | sh ch th ck ng taught as sounds, then blends; more tricky words | "Which one says shhh?" then read **ship** |
+| Story Summit (1st grade) | Magic e, vowel teams, r-controlled vowels, sentences | Read a sentence, pick the picture |
 
-43 levels in all, each with three layouts that rotate on replay. Letters are introduced in a phonics order (s a t p, i n m d ...) rather than A to Z.
+### Record the letter sounds first
+
+A tablet's built-in voice can say letter *names* but not a clean "mmm" or "sss", and sounding out
+depends on those. So a grown-up records each of the 39 sounds once: title screen → hold the
+Grown-ups button → **Letter sounds in your voice**. Each one comes with a tip on saying it purely
+("mmm", not "muh"). It takes about five minutes and is stored on the device.
+
+Until a sound is recorded the game still works, but falls back to key words ("which one makes the
+sound at the start of moon?") and skips the blending questions that need real sounds.
+
+How it keeps him learning rather than guessing:
+
+- **No reading needed to play.** Every prompt is spoken, menus are pictures, and tapping the prompt repeats it.
+- **Mistakes are safe.** A wrong block greys out, the voice says what that one was, and he tries again. Nothing is lost.
+- **It adapts.** Each sound and word has a mastery level. Weak ones come back more often, and about a third of questions review earlier levels.
+- **Knowing things is power.** Three first-try answers in a row trigger Super Spark: faster, coin magnet, Grumps pop on touch.
+- **Grown-ups page** (hold the button on the title screen) shows what is learned, what needs practice, and can unlock every level and power to start further along.
 
 ## How progress works
 
 - **Each world ends with a boss.** Right answers zap it; five hits win. The boss asks about everything the world taught.
-- **The boss door opens on mastery, not completion.** 80% of the world's letters or words must be learned
+- **The boss door opens on mastery, not completion.** 80% of what the boss asks about (letter sounds, then blending, then reading words) must be learned
   (three first-try answers each). Until then the Play button sends him to the level where he is weakest.
 - **Beating a boss opens the next world and wins a power** that works everywhere: double jump, dash,
   coin magnet, bubble shield, and finally Golden Pip.
@@ -71,12 +101,13 @@ sideloading at home but not for a store release.
 
 ```sh
 npm test                    # curriculum and level-generator checks
-npm start & node tests/playtest.mjs   # a bot plays all 129 layouts, bosses included, to prove each can be finished (needs Playwright)
+npm start & node tests/playtest.mjs   # a bot plays all 129 layouts, with and without recorded sounds, to prove each can be finished (needs Playwright)
 ```
 
 ## Where things are
 
 - `js/curriculum.js` — all teaching content: letters, word lists, sentences, level order, question building. Add words or levels here.
+- `js/sounds.js` — the 39 speech sounds and how words split into them.
 - `js/levelgen.js` — builds each level from chunks (pits, hills, cliffs, moving platforms, secrets, answer stations, boss arenas).
 - `js/game.js` — physics, powers, enemies, bosses, answer blocks, drawing.
 - `js/hero.js` — Pip, hats, colors and pets.
@@ -86,9 +117,8 @@ npm start & node tests/playtest.mjs   # a bot plays all 129 layouts, bosses incl
 
 ## Known limits
 
-- The voice is the device's built-in text-to-speech. It says letter *names* and words well, but cannot
-  say a clean isolated letter sound ("mmm"), so sound questions use a key word ("which letter does
-  moon start with?"). Recorded letter sounds would be the best next upgrade.
+- Letter sounds must be recorded by a grown-up (see above). Recordings stay on the device they were
+  made on, so each tablet needs its own.
 - Progress is saved on one device only.
 
 The Andika font (SIL Open Font License, see `fonts/OFL-Andika.txt`) is used because its letter shapes

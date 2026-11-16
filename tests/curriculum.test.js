@@ -1,24 +1,63 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LEVELS, WORLDS, PICTURES, makeQuestion, mulberry32, worldSkills } from '../js/curriculum.js';
+import { SOUNDS, segment } from '../js/sounds.js';
 import { isUnlocked, nextLevelIndex, worldMastery, hasPower } from '../js/progress.js';
 import { generateLevel, T, GROUND, ROWS } from '../js/levelgen.js';
 
-test('every level builds valid questions', () => {
-  for (const level of LEVELS) {
-    const rng = mulberry32(7);
-    for (let i = 0; i < 300; i++) {
-      const q = makeQuestion(level, {}, rng);
-      assert.ok(q.say, `${level.id} has a spoken prompt`);
-      assert.ok(q.choices.length === 2 || q.choices.length === 3, level.id);
-      assert.ok(q.answer >= 0 && q.answer < q.choices.length, level.id);
-      const labels = q.choices.map((c) => c.label);
-      assert.equal(new Set(labels).size, labels.length, `${level.id} duplicate choices: ${labels}`);
-      for (const c of q.choices) assert.ok(c.label, `${level.id} empty label`);
-      // a hear-only question must not show its answer
-      if (q.show?.text) assert.notEqual(q.show.text, q.choices[q.answer].label, level.id);
+test('every level builds valid questions, with and without recorded sounds', () => {
+  for (const has of [() => false, () => true]) {
+    for (const level of LEVELS) {
+      const rng = mulberry32(7);
+      for (let i = 0; i < 300; i++) {
+        const q = makeQuestion(level, {}, rng, null, has);
+        assert.ok(q.say, `${level.id} has a spoken prompt`);
+        assert.ok(q.choices.length === 2 || q.choices.length === 3, level.id);
+        assert.ok(q.answer >= 0 && q.answer < q.choices.length, level.id);
+        const labels = q.choices.map((c) => c.label);
+        assert.equal(new Set(labels).size, labels.length, `${level.id} duplicate choices: ${labels}`);
+        for (const c of q.choices) assert.ok(c.label, `${level.id} empty label`);
+        // a question must not show its own answer
+        if (q.show?.text) assert.notEqual(q.show.text, q.choices[q.answer].label, level.id);
+        // every recorded sound a script asks for must exist
+        for (const part of [...(q.audio || []), ...(q.praiseAudio || [])]) if (part.s) assert.ok(SOUNDS[part.s], `${level.id} unknown sound ${part.s}`);
+        if (!has()) {
+          assert.equal(q.audio, undefined, `${level.id} ${q.type} needs recordings it does not have`);
+          assert.notEqual(q.type, 'blend');
+        }
+        if (q.sequence) {
+          assert.equal(q.sequence.map((c) => q.choices[c].label).join(''), q.item, 'spelling order spells the word');
+        }
+        // two letters that make the same sound are never offered against each other
+        if (q.type === 'hearSound' || q.type === 'firstSound') {
+          const sounds = q.choices.map((c) => c.sound);
+          assert.equal(new Set(sounds).size, sounds.length, `${level.id} same-sound choices: ${labels}`);
+        }
+      }
     }
   }
+});
+
+test('every word breaks into known sounds', () => {
+  for (const w of Object.keys(PICTURES)) for (const part of segment(w)) assert.ok(SOUNDS[part.s], `${w}: ${part.g}`);
+  const spelled = (w) => segment(w).map((p) => `${p.g}=${p.s}`).join(' ');
+  assert.equal(spelled('cat'), 'c=k a=a t=t');
+  assert.equal(spelled('ship'), 'sh=sh i=i p=p');
+  assert.equal(spelled('duck'), 'd=d u=u ck=k');
+  assert.equal(spelled('cake'), 'c=k a_e=ai k=k');
+  assert.equal(spelled('train'), 't=t r=r ai=ai n=n');
+  assert.equal(spelled('fox'), 'f=f o=o x=x');
+});
+
+test('teaching order: sounds first, and blending only with letters already taught', () => {
+  const meadow = LEVELS.filter((l) => l.world === 0 && !l.boss);
+  const taught = [];
+  for (const level of meadow) {
+    assert.equal(level.types[0], 'hearSound', 'letter levels lead with the sound');
+    taught.push(...level.pool);
+    for (const w of level.pools.blend || []) for (const ch of w) assert.ok(taught.includes(ch), `${level.id}: ${w} uses untaught ${ch}`);
+  }
+  assert.ok(meadow[1].pools.blend.length > 0, 'blending starts by the second letter set');
 });
 
 test('every word used in a picture level has a picture', () => {
@@ -34,7 +73,7 @@ test('levels are unique and cover every world', () => {
 
 test('weak items are asked more often', () => {
   const level = LEVELS[0];
-  const mastery = Object.fromEntries(level.pool.slice(1).flatMap((l) => [[`n:${l}`, { b: 4 }]]));
+  const mastery = Object.fromEntries(level.pool.slice(1).flatMap((l) => [[`n:${l}`, { b: 4 }], [`s:${l}`, { b: 4 }]]));
   const rng = mulberry32(3);
   let weak = 0;
   for (let i = 0; i < 400; i++) if (makeQuestion(level, mastery, rng).item === level.pool[0]) weak++;

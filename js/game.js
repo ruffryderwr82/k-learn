@@ -38,8 +38,9 @@ function roundRect(ctx, x, y, w, h, r) {
 
 export class Game {
   /**
-   * hooks: nextQuestion(avoidItem), onAnswer(question, firstTry), onPrompt(question|null),
-   *        onHud(state), onComplete(result), speak(text), sfx(name)
+   * hooks: nextQuestion(avoidItem), onAnswer(question, firstTry), onPrompt(question|null, step),
+   *        ask(question), praise(question), wrong(question, choice), sound(soundId),
+   *        onHud(state), onComplete(result), sfx(name)
    */
   constructor(canvas, hooks) {
     this.canvas = canvas;
@@ -384,6 +385,7 @@ export class Game {
       s.q = q;
       s.state = 'active';
       s.firstTry = true;
+      s.step = 0; // for spelling questions: how many letters are in place
       // two answers use the outer blocks; the middle one is removed
       const use = q.choices.length === 2 ? [0, 2] : [0, 1, 2];
       s.slots = use.map((slot, i) => ({ c: s.c0 + STATION_SLOTS[slot], r: s.blocks[slot].r, choice: i, wrong: false, pop: this.t + i * 0.08 }));
@@ -393,8 +395,8 @@ export class Game {
         this.setTile(b.c + 1, b.r, T.EMPTY);
       }
       this.active = s;
-      this.hooks.onPrompt?.(q);
-      this.hooks.speak?.(q.say);
+      this.hooks.onPrompt?.(q, 0);
+      this.hooks.ask?.(q);
     }
   }
 
@@ -402,7 +404,7 @@ export class Game {
     const s = this.stations.find((st) => st.state === 'active' && st.slots.some((b) => b.r === r && (b.c === c || b.c + 1 === c)));
     if (!s) return;
     const slot = s.slots.find((b) => b.r === r && (b.c === c || b.c + 1 === c));
-    if (slot.wrong) return;
+    if (slot.wrong || slot.locked) return;
     this.answer(s, slot);
   }
 
@@ -411,14 +413,35 @@ export class Game {
     const bx = (slot.c + 1) * TILE;
     const by = slot.r * TILE;
     slot.bumpT = this.t;
-    if (slot.choice === q.answer) {
+    if (q.sequence) {
+      // spelling: the letters must be bumped in order, one sound at a time
+      if (slot.choice !== q.sequence[s.step]) {
+        slot.missT = this.t;
+        s.firstTry = false;
+        this.streak = 0;
+        this.hooks.sfx?.('wrong');
+        this.hooks.wrong?.(q, q.choices[slot.choice]);
+        this._hud();
+        return;
+      }
+      slot.locked = true;
+      s.step++;
+      this.hooks.onPrompt?.(q, s.step);
+      if (s.step < q.sequence.length) {
+        this.hooks.sfx?.('coin');
+        this.hooks.sound?.(q.choices[slot.choice].sound);
+        this._burst(bx, by, '#7ee081', 8);
+        return;
+      }
+    }
+    if (q.sequence || slot.choice === q.answer) {
       s.state = 'done';
       this.active = null;
       this.score.right++;
       if (s.firstTry) this.score.firstTry++;
       this.hooks.onAnswer?.(q, s.firstTry);
       this.hooks.sfx?.('right');
-      this.hooks.speak?.(q.praise);
+      this.hooks.praise?.(q);
       this.hooks.onPrompt?.(null);
       const prize = s.firstTry ? 6 : 2;
       for (let i = 0; i < prize; i++) this.loose.push({ x: bx, y: by - 10, vx: (i - (prize - 1) / 2) * 60, vy: -520 - Math.random() * 120, life: 0 });
@@ -464,8 +487,7 @@ export class Game {
       s.shake = this.t;
       this.streak = 0;
       this.hooks.sfx?.('wrong');
-      const said = q.choices[slot.choice].say;
-      this.hooks.speak?.(`${said ? `That one is ${said}.` : 'Not that one.'} Try again. ${q.say}`);
+      this.hooks.wrong?.(q, q.choices[slot.choice]);
     }
     this._hud();
   }
@@ -858,7 +880,7 @@ export class Game {
       for (const b of slots) {
         const choice = b.blank ? null : s.q.choices[b.choice];
         const over = s.state === 'done' || s.state === 'rearm';
-        const right = over && b.choice === s.q.answer;
+        const right = b.locked || (over && !s.q.sequence && b.choice === s.q.answer);
         const faded = b.wrong || (over && !right);
         let x = b.c * TILE;
         let y = b.r * TILE - 6;
@@ -866,7 +888,7 @@ export class Game {
         const h = TILE + 6;
         const since = t - (b.bumpT ?? -9);
         if (since < 0.25) {
-          if (b.wrong) x += Math.sin(since * 60) * 5; else y -= Math.sin((since / 0.25) * Math.PI) * 12;
+          if (b.wrong || b.missT === b.bumpT) x += Math.sin(since * 60) * 5; else y -= Math.sin((since / 0.25) * Math.PI) * 12;
         }
         if (!b.blank && t - b.pop < 0.2) y -= Math.sin(((t - b.pop) / 0.2) * Math.PI) * 8;
 
@@ -895,7 +917,17 @@ export class Game {
           let size = choice.kind === 'letter' ? 42 : 34;
           ctx.font = `700 ${size}px ${FONT}`;
           while (ctx.measureText(choice.label).width > w - 18 && size > 16) { size -= 2; ctx.font = `700 ${size}px ${FONT}`; }
-          ctx.fillText(choice.label, cx, cy - 2);
+          if (choice.heart?.length) {
+            // tricky words: the letters to learn by heart are red
+            let lx = cx - ctx.measureText(choice.label).width / 2;
+            ctx.textAlign = 'left';
+            [...choice.label].forEach((ch, i) => {
+              ctx.fillStyle = choice.heart.includes(i) ? '#e11d48' : '#26314f';
+              ctx.fillText(ch, lx, cy - 2);
+              lx += ctx.measureText(ch).width;
+            });
+            ctx.textAlign = 'center';
+          } else ctx.fillText(choice.label, cx, cy - 2);
         }
         ctx.globalAlpha = 1;
       }

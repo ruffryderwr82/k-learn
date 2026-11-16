@@ -12,7 +12,13 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 await page.goto(url);
 await page.waitForFunction(() => window.__k);
 
-const results = await page.evaluate(() => {
+// Run once with no recorded letter sounds (key-word questions) and once with them
+// (blending and sound questions), since the two ask different things.
+const run = (withSounds) => page.evaluate(async (withSounds) => {
+  if (withSounds) {
+    const { SOUNDS } = await import('./js/sounds.js');
+    for (const id of Object.keys(SOUNDS)) await window.__k.audio.saveClip(id, new Float32Array(2000).fill(0.1), 44100);
+  }
   const { game: g, startLevel, LEVELS } = window.__k;
   const out = [];
   const dump = (g) => {
@@ -41,7 +47,8 @@ const results = await page.evaluate(() => {
       inp.dash = crack ? !inp.dash : false;
       if (g.active) {
         const s = g.active;
-        const slot = s.slots.find((b) => b.choice === s.q.answer);
+        const want = s.q.sequence ? s.q.sequence[s.step] : s.q.answer; // spelling: the next letter
+        const slot = s.slots.find((b) => b.choice === want);
         const tx = (slot.c + 1) * 48;
         const onTop = p.y + p.h <= slot.r * 48; // landed on the blocks: walk back off first
         inp.left = onTop || px > tx + 6;
@@ -73,15 +80,16 @@ const results = await page.evaluate(() => {
     }
     g.hooks.onComplete = keep;
     inp.left = inp.right = inp.jump = inp.dash = false;
-    out.push({ id: `${LEVELS[i].id}/${variant}`, boss: !!LEVELS[i].boss, ok: !!done, seconds: Math.round(steps / 120), width: g.lv.W, ...(done || { stuckAt: Math.round(g.p.x / 48), dump: dump(g) }) });
+    out.push({ id: `${LEVELS[i].id}/${variant}${withSounds ? ' +sounds' : ''}`, boss: !!LEVELS[i].boss, ok: !!done, seconds: Math.round(steps / 120), width: g.lv.W, ...(done || { stuckAt: Math.round(g.p.x / 48), dump: dump(g) }) });
   }
   return out;
-});
+}, withSounds);
+const results = [...await run(false), ...await run(true)];
 
 let bad = 0;
 for (const r of results) {
   if (!r.ok || r.firstTry !== (r.boss ? 5 : 6)) bad++;
-  console.log(`${r.ok ? 'ok  ' : 'FAIL'} ${r.id.padEnd(14)} ${String(r.seconds).padStart(3)}s  ${r.width} tiles  coins ${r.coins ?? '-'}  first-try ${r.firstTry ?? '-'}/${r.boss ? 5 : 6} ${r.ok ? '' : 'stuck at column ' + r.stuckAt}`);
+  console.log(`${r.ok ? 'ok  ' : 'FAIL'} ${r.id.padEnd(22)} ${String(r.seconds).padStart(3)}s  ${r.width} tiles  coins ${r.coins ?? '-'}  first-try ${r.firstTry ?? '-'}/${r.boss ? 5 : 6} ${r.ok ? '' : 'stuck at column ' + r.stuckAt}`);
   if (r.dump) console.log(r.dump);
 }
 if (errors.length) console.log('page errors:', errors);

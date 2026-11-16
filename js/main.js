@@ -1,5 +1,6 @@
 // Screens, menus and wiring between the game, the curriculum and saved progress.
 import { LEVELS, WORLDS, LETTERS, PICTURES, POWERS, makeQuestion } from './curriculum.js';
+import { SOUNDS, segment, soundOf } from './sounds.js';
 import * as store from './progress.js';
 import * as audio from './audio.js';
 import { Game } from './game.js';
@@ -13,7 +14,9 @@ let current = 0;       // index of the level being played
 let mapWorld = 0;
 let lastResult = null;
 
-const say = (text) => audio.speak(text);
+const say = (text) => audio.play(text);
+const promptScript = (q) => q.audio || [q.say];
+const canSound = (ids) => !!ids && ids.every(audio.hasSound);
 
 // ---- screens --------------------------------------------------------------
 const renderers = { map: renderMap, shop: renderShop, album: renderAlbum, parent: renderParent };
@@ -23,7 +26,9 @@ function show(name) {
   document.querySelectorAll('[data-coins]').forEach((e) => { e.textContent = state.coins; });
   document.querySelectorAll('[data-gems]').forEach((e) => { e.textContent = store.gemBalance(state); });
   if (name !== 'play') { game.stop(); audio.music(null); }
+  if (name !== 'parent') audio.closeMic();
   renderers[name]?.();
+  if (name === 'title') updateNudge();
   screen = name;
 }
 let screen = 'title';
@@ -39,7 +44,7 @@ document.addEventListener('click', (e) => {
 
 // ---- the game -------------------------------------------------------------
 const game = new Game($('game'), {
-  nextQuestion: (avoid) => makeQuestion(LEVELS[current], state.mastery, Math.random, avoid),
+  nextQuestion: (avoid) => makeQuestion(LEVELS[current], state.mastery, Math.random, avoid, audio.hasSound),
   onAnswer: (q, firstTry) => { store.recordAnswer(state, q.key, firstTry); store.save(state); },
   onPrompt: showPrompt,
   onHud: (h) => {
@@ -49,7 +54,16 @@ const game = new Game($('game'), {
     $('hudStreak').classList.toggle('super', h.super);
   },
   onComplete: finishLevel,
-  speak: say,
+  ask: (q) => audio.play(promptScript(q)),
+  praise: (q) => audio.play(q.praiseAudio || q.praise),
+  wrong: (q, choice) => {
+    if (q.sequence) return audio.play(['Not yet. Listen.', q.item]);
+    // name what was picked (by its sound when there is one), then ask again
+    const picked = choice.sound && audio.hasSound(choice.sound) && q.audio ? ['That one says', { s: choice.sound }]
+      : [choice.say ? `That one is ${choice.say}.` : 'Not that one.'];
+    return audio.play([...picked, 'Try again.', { pause: 200 }, ...promptScript(q)]);
+  },
+  sound: (id) => audio.playSound(id),
   sfx: audio.sfx,
 });
 
@@ -77,19 +91,50 @@ function startLevel(index) {
   audio.music(level.world);
 }
 
-function showPrompt(q) {
+function showPrompt(q, step = 0) {
   const el = $('prompt');
   if (!q) { el.hidden = true; return; }
   const box = $('promptShow');
-  box.textContent = q.show ? (q.show.emoji || q.show.text) : '';
-  box.classList.toggle('long', !!q.show?.long);
+  const show = q.show || {};
+  box.classList.toggle('long', !!show.long);
+  box.classList.toggle('sounded', !!show.word);
+  if (show.word) {
+    // a printed word with "sound buttons": a dot under each single sound, a bar under two letters that share one
+    box.innerHTML = '';
+    for (const part of segment(show.word)) {
+      const span = document.createElement('span');
+      span.className = part.g.includes('_') ? 'gr split' : part.g.length > 1 ? 'gr pair' : 'gr';
+      // a magic-e vowel shows just the vowel here; its silent e is added at the end
+      span.textContent = part.g.includes('_') ? show.word[part.at[0]] : show.word.slice(part.at[0], part.at[part.at.length - 1] + 1);
+      box.append(span);
+    }
+    const last = segment(show.word).find((p) => p.g.includes('_'));
+    if (last) { const e = document.createElement('span'); e.className = 'gr silent'; e.textContent = 'e'; box.append(e); }
+  } else if (show.slots) {
+    box.innerHTML = '';
+    box.append(`${show.emoji} `);
+    show.slots.forEach((ch, i) => {
+      const span = document.createElement('span');
+      span.className = `slot ${i < step ? 'in' : ''}`;
+      span.textContent = i < step ? ch : '';
+      box.append(span);
+    });
+  } else box.textContent = show.emoji || show.text || '';
+  if (step) return; // just filling in a letter: no need to replay the entrance
   el.hidden = false;
   el.style.animation = 'none';
   void el.offsetWidth; // restart the drop-in animation
   el.style.animation = '';
 }
 
-$('prompt').addEventListener('click', () => { if (game.active) say(game.active.q.say); });
+// Tapping the prompt repeats it. On a printed word it sounds the word out instead:
+// each sound in turn, never the whole word, so the blending is still his to do.
+$('prompt').addEventListener('click', () => {
+  const q = game.active?.q;
+  if (!q) return;
+  if (q.show?.word && canSound(q.soundOut)) audio.play(q.soundOut.flatMap((id, i) => (i ? [{ pause: 350 }, { s: id }] : [{ s: id }])));
+  else audio.play(promptScript(q));
+});
 
 function finishLevel(r) {
   const level = LEVELS[current];
@@ -338,12 +383,12 @@ function renderAlbum() {
   const letters = $('albumLetters');
   letters.innerHTML = '';
   for (const [l, info] of Object.entries(LETTERS)) {
-    const got = box(`n:${l}`) >= store.MASTERED;
-    const sound = box(`s:${l}`) >= store.MASTERED;
+    const got = box(`s:${l}`) >= store.MASTERED;   // the sticker is won by knowing the sound
+    const sound = box(`n:${l}`) >= store.MASTERED;  // and colors in with the name
     const b = document.createElement('button');
     b.className = `sticker ${got ? 'got' : ''}`;
     b.innerHTML = `<span>${l.toUpperCase()}${l}</span><span class="pic" style="${sound ? 'filter:none' : ''}">${info.emoji}</span>`;
-    b.onclick = () => say(`${info.name}. ${info.word}.`);
+    b.onclick = () => { audio.unlock(); audio.play(audio.hasSound(soundOf(l)) ? [`${info.name} says`, { s: soundOf(l) }, `${info.word}.`] : `${info.name}. ${info.word}.`); };
     letters.append(b);
   }
   const wordsEl = $('albumWords');
@@ -365,19 +410,28 @@ function renderParent() {
   const meter = (label, n, total) => `<div class="meter"><span>${label}</span><div><span style="width:${(100 * n) / total}%"></span></div><em>${n} / ${total}</em></div>`;
   const label = (k) => {
     const [p, item] = k.split(':');
-    return { n: `letter ${item.toUpperCase()}`, s: `sound of ${item}`, w: item, x: item }[p] || null;
+    return { n: `name of ${item.toUpperCase()}`, s: `sound of ${item}`, p: `sounds in ${item}`, b: `blending ${item}`, e: `spelling ${item}`, w: `reading ${item}`, x: item }[p] || null;
   };
   const tricky = Object.keys(m).filter((k) => m[k].s >= 2 && m[k].b === 0).map(label).filter(Boolean);
   const sightTotal = new Set(LEVELS.filter((l) => l.poolKind === 'sight').flatMap((l) => l.pool)).size;
-  const wordTotal = new Set(LEVELS.filter((l) => l.poolKind === 'word').flatMap((l) => l.pool)).size;
+  const wordTotal = new Set(LEVELS.filter((l) => l.poolKind === 'word' && l.world >= 2).flatMap((l) => l.pool)).size;
+  const spellTotal = new Set(LEVELS.flatMap((l) => (l.poolKind === 'spell' ? l.pool : l.pools.build || []))).size;
 
   $('parentBody').innerHTML = `
+    <section id="studio"></section>
+    <section>
+      <h3>How it teaches</h3>
+      <p>The game follows systematic phonics, the sounding-out method: first the <b>sound</b> each letter makes, a few letters at a time; then <b>blending</b> sounds into words (s-a-t, sat) and <b>hearing</b> the sounds inside words; then reading and <b>spelling</b> words made only of sounds already taught. The few irregular words are sounded out as far as they go, with the tricky letters shown in red.</p>
+      <p>On any printed word he can tap the word to hear its sounds one by one. It never says the whole word for him.</p>
+    </section>
     <section>
       <h3>What has been learned</h3>
+      ${meter('Letter sounds', count('s:'), 26 + 10)}
       ${meter('Letter names', count('n:'), 26)}
-      ${meter('Letter sounds', count('s:'), 26)}
-      ${meter('Words read', count('w:'), wordTotal)}
-      ${meter('Sight words', count('x:'), sightTotal)}
+      ${meter('Blending', count('b:'), 38)}
+      ${meter('Spelling', count('e:'), spellTotal)}
+      ${meter('Words read alone', count('w:'), wordTotal)}
+      ${meter('Tricky words', count('x:'), sightTotal)}
       <p>Something counts as learned after three right answers on the first try. A miss moves it back a step, and the game asks about weaker items more often.</p>
     </section>
     <section>
@@ -406,6 +460,7 @@ function renderParent() {
       <button class="plain danger" id="optReset">Erase all progress</button>
     </section>`;
 
+  renderStudio();
   $('optUnlock').onchange = (e) => { state.unlockAll = e.target.checked; store.save(state); };
   document.querySelectorAll('[data-set]').forEach((el) => {
     el.onchange = () => {
@@ -423,6 +478,80 @@ function renderParent() {
     show('parent');
   };
 }
+
+// ---- recording the letter sounds ------------------------------------------
+// The tablet's voice cannot say a pure "mmm", so a grown-up records each sound once.
+const SOUND_LABEL = { k: 'c k ck', qu: 'qu', ai: 'ai a_e', ee: 'ee ea', ie: 'i_e', oa: 'oa o_e', ue: 'u_e', oo: 'oo (moon)', uu: 'oo (book)' };
+const soundLabel = (id) => SOUND_LABEL[id] || id;
+let studioAt = null;   // sound being recorded
+let studioMsg = '';
+
+function renderStudio() {
+  const el = $('studio');
+  if (!el) return;
+  const ids = Object.keys(SOUNDS);
+  const done = ids.filter(audio.hasSound).length;
+  if (!studioAt || !SOUNDS[studioAt]) studioAt = ids.find((id) => !audio.hasSound(id)) || ids[0];
+  const S = SOUNDS[studioAt];
+  el.innerHTML = `
+    <h3>Letter sounds in your voice <em class="count ${done === ids.length ? 'ok' : ''}">${done} / ${ids.length} recorded</em></h3>
+    <p>${done === ids.length ? 'All sounds are recorded. Tap any one to hear it or record it again.'
+      : '<b>Please do this first.</b> Sounding out needs real letter sounds, and the tablet\'s voice can only say letter names. Until a sound is recorded, the game falls back to key words ("the first sound in moon") and cannot do blending. It takes about five minutes.'}</p>
+    <div class="recorder">
+      <div class="big">${soundLabel(studioAt)}</div>
+      <div class="how">
+        <p><b>Say:</b> ${S.tip}</p>
+        <p class="eg">${S.emoji} as at the ${S.pos} of <b>${S.word}</b>. Say only the sound, once, right after you tap.</p>
+        <div>
+          <button class="plain rec" id="recGo">● Record</button>
+          <button class="plain" id="recPlay" ${audio.hasSound(studioAt) ? '' : 'disabled'}>▶ Listen</button>
+          <button class="plain" id="recNext">Next →</button>
+        </div>
+        <p class="msg" id="recMsg">${studioMsg}</p>
+      </div>
+    </div>
+    <div class="soundgrid">${ids.map((id) => `<button data-snd="${id}" class="${audio.hasSound(id) ? 'ok' : ''} ${id === studioAt ? 'at' : ''}">${soundLabel(id)}</button>`).join('')}</div>`;
+  studioMsg = '';
+
+  const next = () => {
+    const i = ids.indexOf(studioAt);
+    studioAt = [...ids.slice(i + 1), ...ids.slice(0, i + 1)].find((id) => !audio.hasSound(id)) || ids[(i + 1) % ids.length];
+    renderStudio();
+  };
+  $('recNext').onclick = next;
+  $('recPlay').onclick = () => { audio.unlock(); audio.play([{ s: studioAt }]); };
+  el.querySelectorAll('[data-snd]').forEach((b) => {
+    b.onclick = () => { studioAt = b.dataset.snd; renderStudio(); audio.unlock(); if (audio.hasSound(studioAt)) audio.play([{ s: studioAt }]); };
+  });
+  $('recGo').onclick = async () => {
+    const btn = $('recGo');
+    try {
+      audio.hush();
+      await audio.openMic();
+      btn.classList.add('live');
+      btn.textContent = '● Listening…';
+      const heard = await audio.record(studioAt);
+      if (heard) {
+        studioMsg = 'Saved. Playing it back. If it has an "uh" on the end, record it again.';
+        renderStudio();
+        audio.play([{ s: studioAt }]);
+      } else {
+        studioMsg = 'Nothing was heard. Try again a little louder.';
+        renderStudio();
+      }
+    } catch (err) {
+      studioMsg = `The microphone is not available here (${err.message || err.name}). Open the game in the Android app or a normal browser tab and allow the microphone when asked.`;
+      renderStudio();
+    }
+  };
+}
+
+// A nudge on the title screen until the sounds are recorded.
+function updateNudge() {
+  const missing = Object.keys(SOUNDS).length - audio.soundCount();
+  $('btnParent').textContent = missing ? '🎙 Grown-ups: record the letter sounds (hold here)' : 'Grown-ups: hold here';
+}
+audio.loadClips().then(updateNudge);
 
 // ---- offline support ------------------------------------------------------
 // (Not needed inside the Android app, where the files are already on the device.)

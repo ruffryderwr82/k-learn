@@ -224,3 +224,31 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; }
 .pad.right { align-items: flex-end; }
 .item .price.gem { color: #0b7f96; }
 .item .lockmsg { font-size: 22px; }
+
+/* ---- sounding out ---- */
+#promptShow.sounded { display: flex; gap: 2px; letter-spacing: 2px; }
+.gr { position: relative; padding: 0 3px 16px; }
+.gr::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--sun-deep); }
+.gr.pair::after { width: auto; left: 5px; right: 5px; margin: 0; height: 7px; border-radius: 4px; }
+.gr.split::after { background: #e11d48; }
+.gr.silent { color: #9aa3b8; }
+.gr.silent::after { background: none; border: 3px solid #e11d48; width: 6px; height: 6px; margin-left: -6px; }
+.slot { display: inline-block; width: 1.05em; height: 1.2em; margin: 0 3px; border-bottom: 6px solid var(--sun-deep); text-align: center; vertical-align: bottom; line-height: 1.1; }
+.slot.in { border-color: var(--go); color: var(--go-deep); }
+
+.parent-body h3 .count { float: right; font-style: normal; font-weight: 600; font-size: 14px; background: #ffd9d9; color: #a11; padding: 2px 10px; border-radius: 999px; }
+.parent-body h3 .count.ok { background: #d6f5d6; color: #17691f; }
+.recorder { display: flex; gap: 18px; align-items: center; background: #f3efe2; border-radius: 14px; padding: 14px 18px; margin: 12px 0; }
+.recorder .big { font: 700 64px/1 var(--font); min-width: 150px; text-align: center; }
+.recorder .how { flex: 1; min-width: 0; }
+.recorder .eg { color: #56607a; }
+.recorder .msg { min-height: 1.4em; color: #17691f; font-weight: 600; }
+.parent-body button.rec { background: #e11d48; color: #fff; }
+.parent-body button.rec.live { animation: pulse .6s ease-in-out infinite; }
+.parent-body button:disabled { opacity: .4; }
+.soundgrid { display: flex; flex-wrap: wrap; gap: 6px; }
+.soundgrid button { font: 700 17px var(--font); min-width: 44px; padding: 7px 10px; border-radius: 10px; background: #ffe1e1; color: #a11; }
+.soundgrid button.ok { background: #d6f5d6; color: #17691f; }
+.soundgrid button.at { outline: 3px solid var(--ink); }
+@media (max-width: 560px) { .recorder { flex-direction: column; align-items: stretch; } }
+.parent-btn { max-width: 80vw; }
