@@ -163,8 +163,10 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; }
 .stars i:nth-child(3) { transition-delay: .6s; }
 
 /* ---- shop ---- */
-.shop-body { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; gap: 4vw; overflow-y: auto; }
-#shopHero { width: 200px; height: 233px; flex: none; }
+.shop-body { flex: 1; width: 100%; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 3vw; }
+.shop-lists { max-height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 8px 10px 30px; }
+#shopHero { width: 250px; height: 233px; flex: none; }
+.wallets { gap: 8px; }
 .shop-grid { display: grid; grid-template-columns: repeat(4, 84px); gap: 12px; margin: 14px 0; }
 .item { height: 96px; border-radius: 20px; background: var(--paper); box-shadow: 0 5px 0 #d9d2bd; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 16px; position: relative; }
 .item canvas { width: 56px; height: 56px; }
@@ -176,6 +178,7 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; }
 .item.nope { animation: nope .3s; }
 @keyframes nope { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
 @media (orientation: portrait) { .shop-body { flex-direction: column; } }
+@media (max-height: 480px) { #shopHero { width: 150px; height: 140px; } }
 
 /* ---- sticker book ---- */
 .stickers { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 12px; max-width: 900px; margin: 0 auto 26px; }
@@ -202,3 +205,22 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; }
 .parent-body button.danger { background: #ffd9d9; color: #a11; }
 
 .pause-icon { display: block; width: 18px; height: 20px; margin: auto; border-left: 6px solid var(--ink); border-right: 6px solid var(--ink); }
+
+/* ---- boss door, powers ---- */
+.gate { display: flex; align-items: center; gap: 10px; background: rgba(38, 49, 79, .75); color: #fff; border-radius: 999px; padding: 6px 14px; font-size: 22px; margin-top: 4px; }
+.gate div { width: min(34vw, 260px); height: 16px; border-radius: 8px; background: rgba(255, 255, 255, .25); overflow: hidden; }
+.gate i { display: block; height: 100%; background: var(--sun); border-radius: 8px; transition: width .6s; }
+.gate.open { background: var(--go); }
+.gate[hidden] { display: none; }
+.node.boss { background: #ffd9e6; box-shadow: 0 8px 0 #e79ab5, 0 12px 18px rgba(0, 0, 0, .2); }
+.node.boss.locked { background: #c9d3e6; box-shadow: 0 8px 0 #a5b0c8; }
+.node.boss.next { background: var(--sun); box-shadow: 0 8px 0 var(--sun-deep), 0 12px 18px rgba(0, 0, 0, .2); }
+.power { display: flex; align-items: center; gap: 12px; background: linear-gradient(90deg, #ffe066, #ffb703); border-radius: 18px; padding: 8px 20px; font-size: 26px; animation: pulse 1.2s ease-in-out infinite; }
+.power[hidden] { display: none; }
+.power span { font-size: 38px; }
+.pad-btn.dash { align-self: flex-end; background: rgba(77, 184, 255, .7); }
+.pad-btn.dash.down { background: rgba(77, 184, 255, 1); }
+.pad-btn[hidden] { display: none; }
+.pad.right { align-items: flex-end; }
+.item .price.gem { color: #0b7f96; }
+.item .lockmsg { font-size: 22px; }

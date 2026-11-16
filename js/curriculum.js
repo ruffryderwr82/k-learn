@@ -123,14 +123,24 @@ function buildLevels() {
     L.push({ id: `${WORLDS[world].id}-${L.filter((l) => l.world === world).length + 1}`, world, title, types, pool, review, ...extra });
   };
 
+  // Each world ends with a boss fight that asks about everything taught in that world.
+  const boss = (world, types, poolKind) => {
+    const pool = [...new Set(L.filter((l) => l.world === world && l.poolKind === poolKind).flatMap((l) => l.pool))];
+    add(world, 'Boss', types, pool, { poolKind, boss: true, id: `${WORLDS[world].id}-boss`, review: [] });
+  };
+
   // World 1: letter names, upper and lower case.
   LETTER_GROUPS.forEach((g, i) =>
     add(0, g.join(' ').toUpperCase(), i === 0 ? ['nameU', 'nameL'] : ['nameU', 'nameL', 'match'], g, { poolKind: 'letter' }));
   add(0, 'A to Z', ['nameU', 'nameL', 'match'], Object.keys(LETTERS), { poolKind: 'letter' });
 
+  boss(0, ['nameU', 'nameL', 'match'], 'letter');
+
   // World 2: letter sounds.
   LETTER_GROUPS.forEach((g) => add(1, g.join(' '), ['sound', 'starts'], g, { poolKind: 'letter' }));
   add(1, 'a to z', ['sound', 'starts'], Object.keys(LETTERS), { poolKind: 'letter' });
+
+  boss(1, ['sound', 'starts'], 'letter');
 
   // World 3: blending three-sound words, one vowel at a time.
   const cvc = {
@@ -144,6 +154,8 @@ function buildLevels() {
   add(2, 'the, a, I...', ['hear'], SIGHT_SETS[0], { poolKind: 'sight' });
   add(2, 'mix it up', ['pic2word', 'word2pic', 'word2pic'], Object.values(cvc).flat(), { poolKind: 'word' });
 
+  boss(2, ['pic2word', 'word2pic'], 'word');
+
   // World 4: sight words, digraphs and blends.
   add(3, 'sh ch th', ['pic2word', 'word2pic'], words('ship fish shell chick bath'), { poolKind: 'word' });
   add(3, 'you, he, she...', ['hear'], SIGHT_SETS[1], { poolKind: 'sight' });
@@ -152,6 +164,8 @@ function buildLevels() {
   add(3, 'like, go, said...', ['hear'], SIGHT_SETS[2], { poolKind: 'sight' });
   add(3, 'more blends', ['pic2word', 'word2pic'], words('clap stop hand milk tent gift'), { poolKind: 'word' });
   add(3, 'silly or true?', ['yesno'], SENTENCE_YN.slice(0, 9).map((_, i) => i), { poolKind: 'yn' });
+
+  boss(3, ['pic2word', 'word2pic'], 'word');
 
   // World 5: first grade.
   add(4, 'magic e', ['pic2word', 'word2pic'], words('cake bike kite bone rose nose'), { poolKind: 'word' });
@@ -162,10 +176,20 @@ function buildLevels() {
   add(4, 'ar or ir', ['pic2word', 'word2pic'], words('star car corn fork bird shark horse'), { poolKind: 'word' });
   add(4, 'read and find', ['sentpic'], SENTENCE_PICS.map((_, i) => i), { poolKind: 'sp' });
   add(4, 'story time', ['sentpic', 'yesno2'], SENTENCE_PICS.map((_, i) => i), { poolKind: 'sp' });
+  boss(4, ['pic2word', 'word2pic'], 'word');
   return L;
 }
 
 export const LEVELS = buildLevels();
+
+// Beating a world's boss earns a new power that works everywhere from then on.
+export const POWERS = [
+  { id: 'double', name: 'Double Jump', icon: '⏫', say: 'New power! Double jump. Tap jump again in the air to go higher.' },
+  { id: 'dash', name: 'Dash', icon: '💨', say: 'New power! Dash. Tap the dash button to zoom and smash cracked walls.' },
+  { id: 'magnet', name: 'Coin Magnet', icon: '🧲', say: 'New power! Coin magnet. Coins fly right to you.' },
+  { id: 'shield', name: 'Bubble Shield', icon: '🛡️', say: 'New power! Bubble shield. It blocks one bump from a Grump.' },
+  { id: 'gold', name: 'Golden Pip', icon: '👑', say: 'You did it! You beat every boss. Golden Pip is yours.' },
+];
 
 // ---- question building -------------------------------------------------
 
@@ -194,6 +218,16 @@ export function shuffle(arr, rng) {
 // Which mastery record a question type reads and writes.
 const KEY_PREFIX = { nameU: 'n', nameL: 'n', match: 'n', sound: 's', starts: 's', pic2word: 'w', word2pic: 'w', hear: 'x', sentpic: 't', yesno: 'y', yesno2: 'y' };
 export const skillKey = (type, item) => `${KEY_PREFIX[type]}:${item}`;
+
+// The things a world teaches, as mastery keys. Used to decide when its boss door opens.
+export function worldSkills(world) {
+  const keys = new Set();
+  for (const l of LEVELS) {
+    if (l.world !== world || l.boss || !['letter', 'word', 'sight'].includes(l.poolKind)) continue;
+    for (const item of l.pool) keys.add(skillKey(l.types[0], item));
+  }
+  return [...keys];
+}
 
 // Pick what to ask about: mostly this level's new items, sometimes review,
 // and always leaning toward whatever the child knows least.

@@ -16,7 +16,18 @@ Made for touch on an iPad. Also works with a keyboard (arrows + space) and on ph
 | Sky Islands | sh ch th ck ng, blends, more sight words, first sentences | Same, plus "silly or true?" sentences |
 | Story Summit (1st grade) | Magic e, vowel teams, r-controlled vowels, sentences | Read a sentence, pick the picture or decide if it is true |
 
-38 levels in all. Letters are introduced in a phonics order (s a t p, i n m d ...) rather than A to Z.
+43 levels in all, each with three layouts that rotate on replay. Letters are introduced in a phonics order (s a t p, i n m d ...) rather than A to Z.
+
+## How progress works
+
+- **Each world ends with a boss.** Right answers zap it; five hits win. The boss asks about everything the world taught.
+- **The boss door opens on mastery, not completion.** 80% of the world's letters or words must be learned
+  (three first-try answers each). Until then the Play button sends him to the level where he is weakest.
+- **Beating a boss opens the next world and wins a power** that works everywhere: double jump, dash,
+  coin magnet, bubble shield, and finally Golden Pip.
+- **Later worlds use those powers:** moving platforms and tall cliffs (double jump) from Sound Canyon,
+  cracked walls (dash) from Word Woods, flying Grumps from Sky Islands.
+- **Rewards:** coins buy 10 colors and 9 hats. Hidden gems buy pets that follow Pip, plus a few rare items.
 
 How it keeps him learning rather than guessing:
 
@@ -24,7 +35,7 @@ How it keeps him learning rather than guessing:
 - **Mistakes are safe.** A wrong block greys out, the voice names what it was, and he tries again. Nothing is lost.
 - **It adapts.** Each letter and word has a mastery level. Weak ones come back more often, and about a third of questions review earlier levels.
 - **Knowing things is power.** Three first-try answers in a row trigger Super Spark: faster, coin magnet, Grumps pop on touch.
-- **Grown-ups page** (hold the button on the title screen) shows what is learned, what needs practice, and can unlock every level to start further along.
+- **Grown-ups page** (hold the button on the title screen) shows what is learned, what needs practice, and can unlock every level and power to start further along.
 
 ## Play it
 
@@ -60,16 +71,17 @@ sideloading at home but not for a store release.
 
 ```sh
 npm test                    # curriculum and level-generator checks
-npm start & node tests/playtest.mjs   # a bot plays all 38 levels to prove each can be finished (needs Playwright)
+npm start & node tests/playtest.mjs   # a bot plays all 129 layouts, bosses included, to prove each can be finished (needs Playwright)
 ```
 
 ## Where things are
 
 - `js/curriculum.js` — all teaching content: letters, word lists, sentences, level order, question building. Add words or levels here.
-- `js/levelgen.js` — builds each level from chunks (pits, hills, secrets, answer stations).
-- `js/game.js` — physics, enemies, answer blocks, drawing.
+- `js/levelgen.js` — builds each level from chunks (pits, hills, cliffs, moving platforms, secrets, answer stations, boss arenas).
+- `js/game.js` — physics, powers, enemies, bosses, answer blocks, drawing.
+- `js/hero.js` — Pip, hats, colors and pets.
 - `js/main.js` — menus, shop, sticker book, grown-ups page.
-- `js/progress.js` — saved progress and mastery tracking (stored on the device).
+- `js/progress.js` — saved progress, mastery tracking and the rules for what is unlocked (stored on the device).
 - `js/audio.js` — sound effects, music and the voice.
 
 ## Known limits

@@ -1,6 +1,6 @@
 // The platformer: physics, answer blocks, enemies, collectibles and drawing.
-import { generateLevel, TILE, ROWS, GROUND, T, STATION_SLOTS } from './levelgen.js';
-import { drawHero } from './hero.js';
+import { generateLevel, TILE, ROWS, GROUND, T, STATION_SLOTS, BOSS_HP } from './levelgen.js';
+import { drawHero, drawPet } from './hero.js';
 
 export const FONT = 'Andika, "Chalkboard SE", "Comic Sans MS", sans-serif';
 const VIEW_H = 576;
@@ -9,6 +9,9 @@ const GRAVITY = 2000;
 const JUMP_V = -840;
 const RUN = 270;
 const SPRING_V = -1250;
+const AIR_JUMP_V = -760;
+const DASH_V = 720;
+const BOSS_COLORS = ['#e0528b', '#e07a2f', '#3f9d6b', '#7b5be0', '#3d6fd6'];
 const PW = 30;
 const PH = 42;
 
@@ -42,27 +45,38 @@ export class Game {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.hooks = hooks;
-    this.input = { left: false, right: false, jump: false };
+    this.input = { left: false, right: false, jump: false, dash: false };
     this.running = false;
     this.look = { color: '#4db8ff', hat: 'none' };
     this._frame = this._frame.bind(this);
   }
 
-  start(levelIndex, world, gemsAlreadyFound = [false, false, false]) {
-    const lv = generateLevel(levelIndex, world);
+  /**
+   * opts: gems (already found), variant (layout number), boss, pet,
+   *       powers { double, dash, magnet, shield }
+   */
+  start(levelIndex, world, { gems: gemsAlreadyFound = [false, false, false], variant = 0, boss = false, powers = {}, pet = 'none' } = {}) {
+    const lv = generateLevel(levelIndex, world, { variant, boss });
+    this.powers = powers;
+    this.world = world;
     this.lv = lv;
     this.theme = THEMES[world % THEMES.length];
     this.t = 0;
     this.acc = 0;
     this.state = 'play';
     this.wonAt = 0;
-    this.p = { x: lv.spawn.x - PW / 2, y: lv.spawn.y - PH, w: PW, h: PH, vx: 0, vy: 0, grounded: true, facing: 1, coyote: 0, buffer: 0, invuln: 0, stun: 0, squash: 0 };
+    this.p = { x: lv.spawn.x - PW / 2, y: lv.spawn.y - PH, w: PW, h: PH, vx: 0, vy: 0, grounded: true, facing: 1, coyote: 0, buffer: 0, invuln: 0, stun: 0, squash: 0, airJumps: 0, dashT: 0, dashCd: 0, dashDir: 1, riding: null, shield: !!powers.shield, shieldAt: 0 };
+    this.pet = { kind: pet, x: this.p.x - 40, y: this.p.y };
     this.safe = { x: this.p.x, y: this.p.y };
     this.jumpWasDown = false;
+    this.dashWasDown = false;
     this.cam = { x: 0, y: 0 };
     this.coins = lv.coins.map((c) => ({ ...c, got: false }));
     this.gems = lv.gems.map((g) => ({ ...g, got: false, old: !!gemsAlreadyFound[g.i] }));
-    this.enemies = lv.enemies.map((e) => ({ ...e, w: 40, h: 32, dir: -1, dead: 0 }));
+    this.enemies = lv.enemies.map((e) => ({ ...e, baseY: e.y, w: 40, h: 32, dir: -1, dead: 0 }));
+    this.movers = lv.movers.map((m) => ({ ...m, x: m.x0, dx: 0 }));
+    this.boss = lv.boss ? { ...lv.boss, hp: BOSS_HP, hitT: -9, nextSpawn: Infinity, dead: 0, bounceT: -9 } : null;
+    this.bolt = null;
     this.springs = lv.springs.map((s) => ({ ...s, boing: 0 }));
     this.stations = lv.stations.map((s) => ({ ...s, state: 'idle', q: null, slots: [], firstTry: true, shake: 0 }));
     this.particles = [];
@@ -135,6 +149,14 @@ export class Game {
     const p = this.p;
     const inp = this.input;
 
+    // moving platforms carry whoever stands on them
+    for (const m of this.movers) {
+      const nx = m.x0 + (m.x1 - m.x0) * (0.5 - 0.5 * Math.cos(this.t * 0.9 + m.phase));
+      m.dx = nx - m.x;
+      m.x = nx;
+    }
+    if (p.riding) { const vx = p.vx; this._moveX(p.riding.dx); p.vx = vx; }
+
     if (this.state === 'won') {
       p.vx = 0;
       if (this.t - this.wonAt > 1.6 && !this.reported) {
@@ -160,16 +182,42 @@ export class Game {
     this.jumpWasDown = inp.jump;
     p.buffer = pressed ? 0.13 : p.buffer - dt;
     p.coyote = p.grounded ? 0.1 : p.coyote - dt;
-    if (this.state === 'play' && p.stun <= 0 && p.buffer > 0 && p.coyote > 0) {
+    if (p.grounded) p.airJumps = 0;
+    const canAct = this.state === 'play' && p.stun <= 0;
+    // Every jump is full height: a quick tap must still reach the answer blocks.
+    if (canAct && p.buffer > 0 && p.coyote > 0) {
       p.vy = JUMP_V;
       p.buffer = 0;
       p.coyote = 0;
       p.grounded = false;
       p.squash = -0.25;
       this.hooks.sfx?.('jump');
+    } else if (canAct && pressed && !p.grounded && this.powers.double && p.airJumps < 1) {
+      p.vy = AIR_JUMP_V;
+      p.airJumps++;
+      p.buffer = 0;
+      p.squash = -0.2;
+      this.hooks.sfx?.('jump');
+      for (let i = -3; i <= 3; i++) this.particles.push({ x: p.x + p.w / 2 + i * 6, y: p.y + p.h, vx: i * 40, vy: 60, life: 0.4, color: '#ffffff', size: 4 });
     }
-    // Every jump is full height: a quick tap must still reach the answer blocks.
-    p.vy = Math.min(1300, p.vy + GRAVITY * dt);
+
+    // dash: a short burst straight ahead that smashes cracked walls and Grumps
+    const dashPressed = inp.dash && !this.dashWasDown;
+    this.dashWasDown = inp.dash;
+    p.dashCd -= dt;
+    if (canAct && dashPressed && this.powers.dash && p.dashCd <= 0) {
+      p.dashT = 0.2;
+      p.dashCd = 0.7;
+      p.dashDir = p.facing;
+      this.hooks.sfx?.('dash');
+    }
+    if (p.dashT > 0) {
+      p.dashT -= dt;
+      p.vx = p.dashDir * DASH_V;
+      p.vy = 0;
+      this.particles.push({ x: p.x + p.w / 2, y: p.y + p.h / 2 + (Math.random() - 0.5) * 30, vx: -p.dashDir * 80, vy: -100, life: 0.3, color: '#c9f0ff', size: 5 });
+    } else p.vy = Math.min(1300, p.vy + GRAVITY * dt);
+    if (this.powers.shield && !p.shield && this.t >= p.shieldAt) p.shield = true;
 
     this._moveX(p.vx * dt);
     this._moveY(p.vy * dt);
@@ -206,8 +254,16 @@ export class Game {
       for (let i = 0; i < 40; i++) this._spark(this.lv.goalC * TILE + TILE / 2, (GROUND - 2) * TILE, `hsl(${i * 37} 90% 60%)`, 1, 420);
     }
 
+    // pet trails behind
+    const pet = this.pet;
+    pet.x += (p.x + p.w / 2 - p.facing * 46 - pet.x) * Math.min(1, 5 * dt);
+    pet.y += (p.y + 6 - pet.y) * Math.min(1, 5 * dt);
+
     // camera
-    const tx = clamp(p.x + p.w / 2 - this.viewW * 0.4 + p.facing * 40, 0, Math.max(0, this.lv.W * TILE - this.viewW));
+    // during a boss fight the camera holds on the arena so the boss stays in view
+    const fight = this.boss && !this.boss.dead && p.x + p.w / 2 > this.stations[0].c0 * TILE;
+    const camX = fight ? this.boss.centerX - this.viewW / 2 : p.x + p.w / 2 - this.viewW * 0.4 + p.facing * 40;
+    const tx = clamp(camX, 0, Math.max(0, this.lv.W * TILE - this.viewW));
     this.cam.x += (tx - this.cam.x) * Math.min(1, 6 * dt);
     const maxY = ROWS * TILE - this.viewH;
     const ty = maxY < 0 ? maxY : clamp(p.y - this.viewH * 0.5, 0, maxY);
@@ -219,13 +275,53 @@ export class Game {
     p.x += dx;
     const r0 = Math.floor(p.y / TILE);
     const r1 = Math.floor((p.y + p.h - 1) / TILE);
-    if (dx > 0) {
-      const c = Math.floor((p.x + p.w) / TILE);
-      for (let r = r0; r <= r1; r++) if (this.tile(c, r)) { p.x = c * TILE - p.w - 0.01; p.vx = 0; break; }
-    } else if (dx < 0) {
-      const c = Math.floor(p.x / TILE);
-      for (let r = r0; r <= r1; r++) if (this.tile(c, r)) { p.x = (c + 1) * TILE + 0.01; p.vx = 0; break; }
+    if (dx === 0) return;
+    const c = Math.floor((dx > 0 ? p.x + p.w : p.x) / TILE);
+    for (let r = r0; r <= r1; r++) {
+      const tl = this.tile(c, r);
+      if (!tl) continue;
+      if (tl === T.CRACK && p.dashT > 0) { this._smash(c); break; }
+      p.x = dx > 0 ? c * TILE - p.w - 0.01 : (c + 1) * TILE + 0.01;
+      p.vx = 0;
+      break;
     }
+  }
+
+  _smash(c) {
+    for (let r = 0; r < GROUND; r++) {
+      if (this.tile(c, r) !== T.CRACK) continue;
+      this.setTile(c, r, T.EMPTY);
+      this._spark((c + 0.5) * TILE, (r + 0.5) * TILE, '#b7a48c', 3, 380);
+    }
+    this.hooks.sfx?.('smash');
+  }
+
+  _hurt(dir) {
+    const p = this.p;
+    if (p.shield) {
+      // the bubble pops instead, and grows back after a while
+      p.shield = false;
+      p.shieldAt = this.t + 12;
+      p.invuln = 1.2;
+      p.vx = dir * 250;
+      p.vy = -300;
+      p.grounded = false;
+      this._burst(p.x + p.w / 2, p.y + p.h / 2, '#9be7ff', 16);
+      this.hooks.sfx?.('shield');
+      return;
+    }
+    p.invuln = 1.6;
+    p.stun = 0.35;
+    p.dashT = 0;
+    p.vx = dir * 320;
+    p.vy = -420;
+    p.grounded = false;
+    this.streak = 0;
+    const lost = Math.min(3, this.score.coins);
+    this.score.coins -= lost;
+    for (let i = 0; i < lost; i++) this._spark(p.x + p.w / 2, p.y + p.h / 2, '#ffe066', 1, 300);
+    this.hooks.sfx?.('hurt');
+    this._hud();
   }
 
   _moveY(dy) {
@@ -235,6 +331,7 @@ export class Game {
     const c1 = Math.floor((p.x + p.w - 1) / TILE);
     const wasGrounded = p.grounded;
     p.grounded = false;
+    p.riding = null;
     if (dy >= 0) {
       const r = Math.floor((p.y + p.h) / TILE);
       for (let c = c0; c <= c1; c++) {
@@ -244,6 +341,18 @@ export class Game {
           p.vy = 0;
           p.grounded = true;
           break;
+        }
+      }
+      // moving platforms are solid from above only
+      if (!p.grounded) {
+        for (const m of this.movers) {
+          if (p.x + p.w > m.x && p.x < m.x + m.w && p.y + p.h >= m.y && p.y + p.h - dy <= m.y + 6) {
+            p.y = m.y - p.h;
+            p.vy = 0;
+            p.grounded = true;
+            p.riding = m;
+            break;
+          }
         }
       }
     } else {
@@ -263,7 +372,13 @@ export class Game {
   _stations() {
     const px = this.p.x + this.p.w / 2;
     for (const s of this.stations) {
+      if (s.state === 'rearm' && this.t >= s.rearmAt) {
+        // the boss fight asks again: put all three blocks back
+        for (const b of s.blocks) { this.setTile(b.c, b.r, T.BLOCK); this.setTile(b.c + 1, b.r, T.BLOCK); }
+        s.state = 'idle';
+      }
       if (s.state !== 'idle' || px < s.c0 * TILE) continue;
+      if (s.boss && this.boss.nextSpawn === Infinity) this.boss.nextSpawn = this.t + 4;
       const q = this.hooks.nextQuestion(this.lastItem);
       this.lastItem = q.item;
       s.q = q;
@@ -308,12 +423,33 @@ export class Game {
       const prize = s.firstTry ? 6 : 2;
       for (let i = 0; i < prize; i++) this.loose.push({ x: bx, y: by - 10, vx: (i - (prize - 1) / 2) * 60, vy: -520 - Math.random() * 120, life: 0 });
       this._burst(bx, by, '#ffe066', 18);
-      // open the gate
-      for (let r = 0; r < GROUND; r++) {
-        this.setTile(s.barrierC, r, T.EMPTY);
-        this._spark((s.barrierC + 0.5) * TILE, (r + 0.5) * TILE, '#b8f3ff', 3);
+      const boss = s.boss ? this.boss : null;
+      if (boss) {
+        // a right answer zaps the boss
+        boss.hp--;
+        boss.hitT = this.t;
+        this.bolt = { x0: bx, y0: by, x1: boss.x, y1: boss.y - 50, t: this.t };
+        this._burst(boss.x, boss.y - 50, '#ffe066', 24);
+        this.hooks.sfx?.('bosshit');
       }
-      setTimeout(() => this.hooks.sfx?.('gate'), 350);
+      if (boss && boss.hp > 0) {
+        s.state = 'rearm';
+        s.rearmAt = this.t + 2;
+      } else {
+        if (boss) {
+          boss.dead = this.t;
+          for (const e of this.enemies) if (e.minion && !e.dead) e.dead = this.t;
+          for (let i = 0; i < 16; i++) this.loose.push({ x: boss.x, y: boss.y - 60, vx: (i - 7.5) * 45, vy: -500 - Math.random() * 300, life: 0 });
+          this._burst(boss.x, boss.y - 50, BOSS_COLORS[this.world % 5], 50);
+          this.hooks.sfx?.('bossdown');
+        }
+        // open the gate
+        for (let r = 0; r < GROUND; r++) {
+          this.setTile(s.barrierC, r, T.EMPTY);
+          this._spark((s.barrierC + 0.5) * TILE, (r + 0.5) * TILE, '#b8f3ff', 3);
+        }
+        setTimeout(() => this.hooks.sfx?.('gate'), 350);
+      }
       // answer streaks charge up Super Spark
       this.streak = s.firstTry ? this.streak + 1 : 0;
       if (this.streak >= 3) {
@@ -349,7 +485,8 @@ export class Game {
       const dx = pc.x - c.x;
       const dy = pc.y - c.y;
       const d = Math.hypot(dx, dy);
-      if (this.superT > 0 && d < 170) { c.x += (dx / d) * 500 * dt; c.y += (dy / d) * 500 * dt; }
+      const reach = this.superT > 0 ? 170 : this.powers.magnet ? 120 : 0;
+      if (d < reach && d > 1) { c.x += (dx / d) * 500 * dt; c.y += (dy / d) * 500 * dt; }
       if (d < 34) { c.got = true; this._collect(); this.hooks.sfx?.('coin'); this._spark(c.x, c.y, '#ffe066', 4); }
     }
 
@@ -385,30 +522,35 @@ export class Game {
 
     for (const e of this.enemies) {
       if (e.dead) continue;
-      e.x += e.dir * 55 * dt;
+      e.x += e.dir * (e.minion ? 85 : 55) * dt;
+      if (e.fly) e.y = e.baseY + Math.sin(this.t * 2.2 + e.minX) * 34;
+      if (e.minion && e.x < e.minX) { e.dead = this.t; this._spark(e.x, e.y - 16, '#b388ff', 6); continue; }
       if (e.x < e.minX) { e.x = e.minX; e.dir = 1; }
       if (e.x > e.maxX) { e.x = e.maxX; e.dir = -1; }
       const box = { x: e.x - e.w / 2, y: e.y - e.h, w: e.w, h: e.h };
       if (!overlap(p, box)) continue;
       const stomp = p.vy > 80 && p.y + p.h < box.y + 20;
-      if (stomp || this.superT > 0) {
+      if (stomp || this.superT > 0 || p.dashT > 0) {
         e.dead = this.t;
         if (stomp) p.vy = -560;
         this.hooks.sfx?.('stomp');
         this._burst(e.x, e.y - 16, '#b388ff', 12);
         for (let i = 0; i < 2; i++) this.loose.push({ x: e.x, y: e.y - 30, vx: (i - 0.5) * 120, vy: -480, life: 0 });
-      } else if (p.invuln <= 0) {
-        p.invuln = 1.6;
-        p.stun = 0.35;
-        p.vx = pc.x < e.x ? -320 : 320;
-        p.vy = -420;
-        p.grounded = false;
-        this.streak = 0;
-        const lost = Math.min(3, this.score.coins);
-        this.score.coins -= lost;
-        for (let i = 0; i < lost; i++) this._spark(pc.x, pc.y, '#ffe066', 1, 300);
-        this.hooks.sfx?.('hurt');
-        this._hud();
+      } else if (p.invuln <= 0) this._hurt(pc.x < e.x ? -1 : 1);
+    }
+
+    // the boss sends Grumps marching across the arena, and is bouncy on top
+    const b = this.boss;
+    if (b && !b.dead) {
+      if (this.t >= b.nextSpawn) {
+        b.nextSpawn = this.t + 5;
+        if (this.enemies.filter((e) => e.minion && !e.dead).length < 2) {
+          this.enemies.push({ x: b.x - 70, y: b.y, baseY: b.y, minX: b.leftX, maxX: b.x, w: 40, h: 32, dir: -1, dead: 0, minion: true });
+        }
+      }
+      const box = { x: b.x - 55, y: b.y - 96, w: 110, h: 96 };
+      if (overlap(p, box)) {
+        if (p.vy > 80 && p.y + p.h < box.y + 34) { p.vy = -760; b.bounceT = this.t; this.hooks.sfx?.('spring'); } else if (p.invuln <= 0) this._hurt(-1);
       }
     }
 
@@ -531,11 +673,45 @@ export class Game {
           ctx.fillStyle = 'rgba(255,255,255,0.6)';
           ctx.fillRect(x + 14, y + 6, 4, TILE - 14);
           if (r === GROUND - 2) { ctx.font = '30px sans-serif'; ctx.fillText('🔒', x + TILE / 2, y + 34); }
+        } else if (tl === T.CRACK) {
+          ctx.fillStyle = (r % 2) ? '#9a8a76' : '#8c7c69';
+          ctx.fillRect(x + 4, y, TILE - 8, TILE + 0.5);
+          ctx.strokeStyle = '#4d4032';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(x + 12 + (r * 7) % 14, y);
+          ctx.lineTo(x + 26 - (r * 5) % 10, y + 18);
+          ctx.lineTo(x + 16 + (r * 3) % 12, y + 30);
+          ctx.lineTo(x + 28, y + TILE);
+          ctx.stroke();
+          if (r === GROUND - 2) { ctx.font = '26px sans-serif'; ctx.fillText('💨', x + TILE / 2, y + 32); }
         }
       }
     }
 
     this._drawBlocks();
+
+    // moving platforms
+    for (const m of this.movers) {
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      roundRect(ctx, m.x + 2, m.y + 6, m.w - 4, 18, 9);
+      ctx.fill();
+      ctx.fillStyle = theme.brick;
+      roundRect(ctx, m.x, m.y, m.w, 18, 9);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      roundRect(ctx, m.x + 8, m.y + 3, m.w - 16, 5, 3);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      const dir = m.dx >= 0 ? 1 : -1;
+      ctx.beginPath();
+      ctx.moveTo(m.x + m.w / 2 + dir * 8, m.y + 12);
+      ctx.lineTo(m.x + m.w / 2 - dir * 5, m.y + 8);
+      ctx.lineTo(m.x + m.w / 2 - dir * 5, m.y + 16);
+      ctx.fill();
+    }
+
+    this._drawBoss();
 
     // springs
     for (const s of this.springs) {
@@ -593,6 +769,17 @@ export class Game {
       if (since > 0.4) continue;
       const squish = e.dead ? Math.max(0.15, 1 - since * 4) : 1 + Math.sin(t * 8 + e.minX) * 0.06;
       const h = e.h * squish;
+      if (e.fly && !e.dead) {
+        const flap = Math.sin(t * 18) * 9;
+        ctx.fillStyle = '#c9b3ff';
+        for (const sgn of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(e.x + sgn * 14, e.y - h / 2);
+          ctx.lineTo(e.x + sgn * 40, e.y - h / 2 - 10 - flap);
+          ctx.lineTo(e.x + sgn * 34, e.y - h / 2 + 8);
+          ctx.fill();
+        }
+      }
       ctx.fillStyle = '#8e5bd6';
       roundRect(ctx, e.x - e.w / 2, e.y - h, e.w, h, Math.min(14, h / 2));
       ctx.fill();
@@ -607,6 +794,22 @@ export class Game {
       }
     }
 
+    // pet
+    if (this.pet.kind !== 'none') drawPet(ctx, this.pet.x, this.pet.y + Math.sin(t * 4) * 5, this.pet.kind, t, this.p.x + this.p.w / 2 > this.pet.x ? 1 : -1);
+
+    // answer bolt
+    if (this.bolt && t - this.bolt.t < 0.3) {
+      const bo = this.bolt;
+      ctx.strokeStyle = '#fff27a';
+      ctx.lineWidth = 7;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(bo.x0, bo.y0);
+      for (let i = 1; i < 8; i++) ctx.lineTo(bo.x0 + ((bo.x1 - bo.x0) * i) / 8, bo.y0 + ((bo.y1 - bo.y0) * i) / 8 + (i % 2 ? -18 : 18));
+      ctx.lineTo(bo.x1, bo.y1);
+      ctx.stroke();
+    }
+
     // hero
     const p = this.p;
     if (!(p.invuln > 0 && Math.floor(t * 14) % 2)) {
@@ -614,6 +817,15 @@ export class Game {
         ...this.look, facing: p.facing, t, moving: Math.abs(p.vx) > 30 && p.grounded,
         air: !p.grounded, vy: p.vy, squash: p.squash, glow: this.superT > 0, cheer: this.state === 'won',
       });
+    }
+    if (p.shield) {
+      ctx.strokeStyle = 'rgba(155, 231, 255, 0.9)';
+      ctx.fillStyle = 'rgba(155, 231, 255, 0.18)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(p.x + p.w / 2, p.y + p.h / 2 - 4, 36 + Math.sin(t * 4) * 1.5, 0, 7);
+      ctx.fill();
+      ctx.stroke();
     }
 
     // particles and floating text
@@ -645,8 +857,9 @@ export class Game {
       const slots = s.state === 'idle' ? s.blocks.map((b) => ({ ...b, blank: true })) : s.slots;
       for (const b of slots) {
         const choice = b.blank ? null : s.q.choices[b.choice];
-        const right = s.state === 'done' && b.choice === s.q.answer;
-        const faded = b.wrong || (s.state === 'done' && !right);
+        const over = s.state === 'done' || s.state === 'rearm';
+        const right = over && b.choice === s.q.answer;
+        const faded = b.wrong || (over && !right);
         let x = b.c * TILE;
         let y = b.r * TILE - 6;
         const w = TILE * 2;
@@ -688,6 +901,52 @@ export class Game {
       }
     }
     ctx.textBaseline = 'alphabetic';
+  }
+
+  _drawBoss() {
+    const b = this.boss;
+    if (!b) return;
+    const { ctx, t } = this;
+    const since = b.dead ? t - b.dead : 0;
+    if (since > 0.7) return;
+    const hit = t - b.hitT < 0.35;
+    const k = b.dead ? Math.max(0.05, 1 - since / 0.7) : 1;
+    const bounce = Math.max(0, 1 - (t - b.bounceT) * 5) * 0.2;
+    const w = 110 * k * (1 + bounce);
+    const h = (96 + Math.sin(t * 3) * 4) * k * (1 - bounce);
+    const x = b.x + (hit ? Math.sin(t * 70) * 6 : 0);
+    ctx.fillStyle = hit ? '#ffffff' : BOSS_COLORS[this.world % 5];
+    roundRect(ctx, x - w / 2, b.y - h, w, h, Math.min(38, h / 2));
+    ctx.fill();
+    if (b.dead) return;
+    // crown
+    ctx.fillStyle = '#f5b700';
+    ctx.beginPath();
+    ctx.moveTo(x - 30, b.y - h + 6); ctx.lineTo(x - 30, b.y - h - 26); ctx.lineTo(x - 15, b.y - h - 10); ctx.lineTo(x, b.y - h - 30);
+    ctx.lineTo(x + 15, b.y - h - 10); ctx.lineTo(x + 30, b.y - h - 26); ctx.lineTo(x + 30, b.y - h + 6);
+    ctx.fill();
+    // face (always glaring left, toward the player)
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(x - 26, b.y - h + 40, 14, 0, 7); ctx.arc(x + 14, b.y - h + 40, 14, 0, 7); ctx.fill();
+    ctx.fillStyle = '#2b1b4a';
+    ctx.beginPath(); ctx.arc(x - 31, b.y - h + 42, 6, 0, 7); ctx.arc(x + 9, b.y - h + 42, 6, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#2b1b4a';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(x - 44, b.y - h + 18); ctx.lineTo(x - 14, b.y - h + 30);
+    ctx.moveTo(x + 32, b.y - h + 18); ctx.lineTo(x + 2, b.y - h + 30);
+    ctx.stroke();
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    if (hit) ctx.arc(x - 6, b.y - h + 72, 9, 0, 7); else ctx.arc(x - 6, b.y - h + 80, 16, 1.15 * Math.PI, 1.85 * Math.PI);
+    ctx.stroke();
+    // health
+    for (let i = 0; i < BOSS_HP; i++) {
+      ctx.fillStyle = i < b.hp ? '#ff4d6d' : 'rgba(38,49,79,0.35)';
+      ctx.beginPath();
+      ctx.arc(b.x - (BOSS_HP - 1) * 13 + i * 26, b.y - 150, 9, 0, 7);
+      ctx.fill();
+    }
   }
 
   _drawGoal() {

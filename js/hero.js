@@ -9,6 +9,10 @@ export const COLORS = {
   ember: { hex: '#ff8a3d', cost: 90 },
   ghost: { hex: '#f4f4f8', cost: 120 },
   shadow: { hex: '#3a3f58', cost: 150 },
+  mint: { hex: '#5eead4', cost: 180 },
+  cherry: { hex: '#e11d48', cost: 220 },
+  rainbow: { hex: 'rainbow', cost: 12, gems: true },
+  gold: { hex: '#f5b700', power: 'gold' }, // prize for beating the last boss
 };
 
 export const HATS = {
@@ -18,7 +22,94 @@ export const HATS = {
   propeller: { cost: 90 },
   wizard: { cost: 130 },
   crown: { cost: 200 },
+  tophat: { cost: 240 },
+  cowboy: { cost: 280 },
+  chef: { cost: 320 },
+  viking: { cost: 380 },
+  halo: { cost: 8, gems: true },
+  flame: { cost: 16, gems: true },
 };
+
+// Pets follow Pip around. They cost gems, so the hidden gems are worth hunting.
+export const PETS = {
+  none: { cost: 0 },
+  dot: { cost: 3, gems: true },
+  flit: { cost: 6, gems: true },
+  mochi: { cost: 10, gems: true },
+  boo: { cost: 15, gems: true },
+  ember: { cost: 24, gems: true },
+};
+
+/** A small companion centered on (x, y). */
+export function drawPet(ctx, x, y, kind, t = 0, facing = 1) {
+  if (kind === 'none') return;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(facing, 1);
+  const eyes = (ex, ey, r = 2.4) => {
+    ctx.fillStyle = '#26314f';
+    ctx.beginPath(); ctx.arc(ex, ey, r, 0, 7); ctx.arc(ex + 9, ey, r, 0, 7); ctx.fill();
+  };
+  switch (kind) {
+    case 'dot': { // a little star
+      ctx.fillStyle = '#ffe066';
+      ctx.rotate(Math.sin(t * 3) * 0.2);
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) { const r = i % 2 ? 7 : 15; const a = (i * Math.PI) / 5 - Math.PI / 2; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+      ctx.fill();
+      eyes(-3, 0, 1.8);
+      break;
+    }
+    case 'flit': { // a bird
+      const flap = Math.sin(t * 16) * 7;
+      ctx.fillStyle = '#ff8fab';
+      ctx.beginPath(); ctx.moveTo(-4, -2); ctx.lineTo(-20, -8 - flap); ctx.lineTo(-8, 6); ctx.fill();
+      ctx.fillStyle = '#ff5d8f';
+      ctx.beginPath(); ctx.ellipse(0, 0, 13, 11, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ffb703';
+      ctx.beginPath(); ctx.moveTo(11, -2); ctx.lineTo(20, 2); ctx.lineTo(11, 5); ctx.fill();
+      eyes(0, -3);
+      break;
+    }
+    case 'mochi': { // a round cat
+      ctx.fillStyle = '#ffb561';
+      ctx.beginPath(); ctx.moveTo(-12, -6); ctx.lineTo(-9, -18); ctx.lineTo(-2, -9); ctx.moveTo(12, -6); ctx.lineTo(9, -18); ctx.lineTo(2, -9); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, 0, 15, 12, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ffb3c6';
+      ctx.beginPath(); ctx.arc(1, 3, 2, 0, 7); ctx.fill();
+      eyes(-4, -2);
+      break;
+    }
+    case 'boo': { // a friendly ghost
+      ctx.fillStyle = 'rgba(190, 170, 255, 0.95)';
+      ctx.beginPath();
+      ctx.arc(0, -3, 13, Math.PI, 0);
+      ctx.lineTo(13, 12);
+      for (let i = 0; i < 4; i++) ctx.lineTo(13 - (i + 0.5) * 6.5, 12 - (i % 2 ? 0 : 5) + Math.sin(t * 6 + i) * 1.5);
+      ctx.lineTo(-13, 12);
+      ctx.fill();
+      eyes(-4, -3, 3);
+      break;
+    }
+    case 'ember': { // a baby dragon
+      const flap = Math.sin(t * 12) * 6;
+      ctx.fillStyle = '#fb923c';
+      ctx.beginPath(); ctx.moveTo(-4, -4); ctx.lineTo(-22, -14 - flap); ctx.lineTo(-10, 4); ctx.fill();
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath(); ctx.moveTo(-10, 4); ctx.quadraticCurveTo(-24, 10, -20, 0); ctx.lineTo(-8, -2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, 0, 14, 12, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath(); ctx.moveTo(-6, -10); ctx.lineTo(-3, -19); ctx.lineTo(1, -11); ctx.moveTo(4, -10); ctx.lineTo(8, -18); ctx.lineTo(10, -8); ctx.fill();
+      if (t % 2.5 < 0.4) { ctx.fillStyle = '#ff5d5d'; ctx.beginPath(); ctx.moveTo(13, 1); ctx.lineTo(26, -3); ctx.lineTo(22, 2); ctx.lineTo(27, 6); ctx.fill(); }
+      eyes(0, -3);
+      break;
+    }
+    default:
+  }
+  ctx.restore();
+}
+
+
 
 function rr(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -60,6 +151,49 @@ function drawHat(ctx, hat, t) {
       ctx.fillStyle = '#ffe066';
       ctx.beginPath(); ctx.arc(1, -54, 3.5, 0, 7); ctx.fill();
       break;
+    case 'tophat':
+      ctx.fillStyle = '#1f2540';
+      rr(ctx, -12, -68, 24, 28, 3); ctx.fill();
+      rr(ctx, -20, -44, 40, 6, 3); ctx.fill();
+      ctx.fillStyle = '#e63946';
+      ctx.fillRect(-12, -50, 24, 5);
+      break;
+    case 'cowboy':
+      ctx.fillStyle = '#9a6a3a';
+      ctx.beginPath(); ctx.ellipse(0, -42, 26, 6, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-12, -43); ctx.quadraticCurveTo(-12, -64, 0, -58); ctx.quadraticCurveTo(12, -64, 12, -43); ctx.fill();
+      ctx.fillStyle = '#5b3a1c';
+      ctx.fillRect(-12, -49, 24, 4);
+      break;
+    case 'chef':
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(-9, -60, 9, 0, 7); ctx.arc(2, -64, 10, 0, 7); ctx.arc(11, -58, 8, 0, 7); ctx.fill();
+      rr(ctx, -13, -60, 26, 19, 3); ctx.fill();
+      break;
+    case 'viking':
+      ctx.fillStyle = '#f1f1e6';
+      ctx.beginPath(); ctx.moveTo(-14, -46); ctx.quadraticCurveTo(-28, -52, -22, -66); ctx.quadraticCurveTo(-18, -54, -10, -52); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(14, -46); ctx.quadraticCurveTo(28, -52, 22, -66); ctx.quadraticCurveTo(18, -54, 10, -52); ctx.fill();
+      ctx.fillStyle = '#8a8fa3';
+      ctx.beginPath(); ctx.arc(0, -40, 16, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#f5b700';
+      ctx.fillRect(-16, -44, 32, 4);
+      break;
+    case 'halo':
+      ctx.strokeStyle = '#ffe066';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.ellipse(0, -54 + Math.sin(t * 3) * 2, 15, 5, 0, 0, 7); ctx.stroke();
+      break;
+    case 'flame':
+      for (const [c, k] of [['#ff5d5d', 1], ['#ffb703', 0.6]]) {
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.moveTo(-11 * k, -42);
+        ctx.quadraticCurveTo(-14 * k, -58 * (0.8 + k * 0.2), Math.sin(t * 9) * 4, -42 - 30 * k - Math.sin(t * 13) * 3);
+        ctx.quadraticCurveTo(14 * k, -58 * (0.8 + k * 0.2), 11 * k, -42);
+        ctx.fill();
+      }
+      break;
     case 'crown':
       ctx.fillStyle = '#f5b700';
       ctx.beginPath();
@@ -75,6 +209,7 @@ function drawHat(ctx, hat, t) {
 
 /** Draw Pip with feet at (x, y). */
 export function drawHero(ctx, x, y, size, o = {}) {
+  if (o.color === 'rainbow') o = { ...o, color: `hsl(${((o.t || 0) * 90) % 360} 85% 62%)` };
   const { color = '#4db8ff', hat = 'none', facing = 1, t = 0, moving = false, air = false, vy = 0, squash = 0, glow = false, cheer = false } = o;
   ctx.save();
   ctx.translate(x, y);

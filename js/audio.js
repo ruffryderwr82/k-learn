@@ -49,6 +49,12 @@ const SFX = {
   gate: () => [392, 523, 659].forEach((f, i) => tone(f, 0.4, { type: 'sine', vol: 0.2, delay: i * 0.05 })),
   super: () => [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.18, { type: 'square', vol: 0.1, delay: i * 0.06 })),
   win: () => [523, 523, 523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, { type: 'triangle', vol: 0.25, delay: i * 0.13 })),
+  dash: () => tone(500, 0.16, { type: 'sawtooth', vol: 0.1, slide: 700 }),
+  smash: () => { tone(140, 0.25, { type: 'square', vol: 0.2, slide: -80 }); tone(90, 0.3, { type: 'sawtooth', vol: 0.15, delay: 0.05 }); },
+  shield: () => tone(900, 0.3, { type: 'sine', vol: 0.2, slide: -600 }),
+  bosshit: () => { tone(160, 0.3, { type: 'sawtooth', vol: 0.2, slide: -90 }); tone(1200, 0.15, { type: 'square', vol: 0.1, delay: 0.02 }); },
+  bossdown: () => [784, 659, 523, 392, 262, 196].forEach((f, i) => tone(f, 0.25, { type: 'square', vol: 0.15, delay: i * 0.09 })),
+  power: () => [392, 523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.3, { type: 'triangle', vol: 0.22, delay: i * 0.1 })),
   tap: () => tone(660, 0.06, { type: 'sine', vol: 0.15 }),
   buy: () => [784, 1047, 1568].forEach((f, i) => tone(f, 0.15, { type: 'triangle', vol: 0.2, delay: i * 0.07 })),
 };

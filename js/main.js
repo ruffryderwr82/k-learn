@@ -1,9 +1,9 @@
 // Screens, menus and wiring between the game, the curriculum and saved progress.
-import { LEVELS, WORLDS, LETTERS, PICTURES, makeQuestion } from './curriculum.js';
+import { LEVELS, WORLDS, LETTERS, PICTURES, POWERS, makeQuestion } from './curriculum.js';
 import * as store from './progress.js';
 import * as audio from './audio.js';
 import { Game } from './game.js';
-import { drawHero, COLORS, HATS } from './hero.js';
+import { drawHero, drawPet, COLORS, HATS, PETS } from './hero.js';
 
 const $ = (id) => document.getElementById(id);
 let state = store.load();
@@ -21,7 +21,7 @@ const renderers = { map: renderMap, shop: renderShop, album: renderAlbum, parent
 function show(name) {
   for (const s of document.querySelectorAll('.screen')) s.classList.toggle('show', s.id === name);
   document.querySelectorAll('[data-coins]').forEach((e) => { e.textContent = state.coins; });
-  document.querySelectorAll('[data-gems]').forEach((e) => { e.textContent = store.gemCount(state); });
+  document.querySelectorAll('[data-gems]').forEach((e) => { e.textContent = store.gemBalance(state); });
   if (name !== 'play') { game.stop(); audio.music(null); }
   renderers[name]?.();
   screen = name;
@@ -64,7 +64,15 @@ function startLevel(index) {
   $('pause').hidden = true;
   $('done').hidden = true;
   show('play');
-  game.start(index, level.world, state.gems[level.id]);
+  const powers = Object.fromEntries(POWERS.map((p) => [p.id, store.hasPower(state, p.id)]));
+  $('btnDash').hidden = !powers.dash;
+  game.start(index, level.world, {
+    gems: state.gems[level.id],
+    variant: (state.plays[level.id] || 0) % 3, // replays rotate through three layouts
+    boss: !!level.boss,
+    powers,
+    pet: state.pet,
+  });
   game.run();
   audio.music(level.world);
 }
@@ -87,6 +95,8 @@ function finishLevel(r) {
   const level = LEVELS[current];
   const stars = r.firstTry >= r.right - 1 ? 3 : r.firstTry >= r.right / 2 ? 2 : 1;
   lastResult = { ...r, stars };
+  const power = level.boss && !state.done[level.id] ? POWERS[level.world] : null;
+  state.plays[level.id] = (state.plays[level.id] || 0) + 1;
   state.coins += r.coins;
   state.done[level.id] = Math.max(state.done[level.id] || 0, stars);
   const old = state.gems[level.id] || [false, false, false];
@@ -98,13 +108,23 @@ function finishLevel(r) {
   const starEls = [...$('doneStars').children];
   starEls.forEach((el) => el.classList.remove('on'));
   $('done').hidden = false;
-  $('btnNext').style.display = current + 1 < LEVELS.length ? '' : 'none';
   setTimeout(() => starEls.forEach((el, i) => el.classList.toggle('on', i < stars)), 150);
   audio.music(null);
-  say(`${['Good work!', 'Great job!', 'Amazing!'][stars - 1]} You got ${r.coins} coins.`);
+  $('donePower').hidden = !power;
+  if (power) {
+    $('donePowerIcon').textContent = power.icon;
+    $('donePowerName').textContent = power.name;
+    audio.sfx('power');
+    say(power.say);
+  } else say(`${['Good work!', 'Great job!', 'Amazing!'][stars - 1]} You got ${r.coins} coins.`);
 }
 
-$('btnNext').onclick = () => { audio.sfx('tap'); startLevel(Math.min(current + 1, LEVELS.length - 1)); };
+$('btnNext').onclick = () => {
+  audio.sfx('tap');
+  // carry on to the next level if it is open, otherwise practice where he is weakest
+  const next = current + 1;
+  startLevel(next < LEVELS.length && store.isUnlocked(state, next) ? next : store.nextLevelIndex(state));
+};
 $('btnAgain').onclick = () => { audio.sfx('tap'); startLevel(current); };
 $('btnDoneMap').onclick = () => { audio.hush(); mapWorld = LEVELS[current].world; show('map'); };
 $('btnRestart').onclick = () => startLevel(current);
@@ -135,8 +155,9 @@ function hold(btn, key) {
 hold($('btnLeft'), 'left');
 hold($('btnRight'), 'right');
 hold($('btnJump'), 'jump');
+hold($('btnDash'), 'dash');
 
-const KEYS = { ArrowLeft: 'left', a: 'left', ArrowRight: 'right', d: 'right', ArrowUp: 'jump', w: 'jump', ' ': 'jump' };
+const KEYS = { ArrowLeft: 'left', a: 'left', ArrowRight: 'right', d: 'right', ArrowUp: 'jump', w: 'jump', ' ': 'jump', Shift: 'dash', x: 'dash' };
 window.addEventListener('keydown', (e) => {
   if (screen !== 'play') return;
   if (e.key === 'Escape') pause($('pause').hidden);
@@ -163,6 +184,13 @@ function heroLoop() {
     const ctx = c.getContext('2d');
     ctx.clearRect(0, 0, c.width, c.height);
     drawHero(ctx, c.width / 2, c.height - 16, size, { color: COLORS[state.color].hex, hat: state.hat, t, facing: Math.sin(t * 0.7) > 0 ? 1 : -1, cheer: id === 'titleHero' && t % 4 < 0.6 });
+    if (state.pet !== 'none') {
+      ctx.save();
+      ctx.translate(c.width / 2 - size * 30, c.height - 16 - size * 34 + Math.sin(t * 4) * 6);
+      ctx.scale(size * 0.75, size * 0.75);
+      drawPet(ctx, 0, 0, state.pet, t, 1);
+      ctx.restore();
+    }
   }
   requestAnimationFrame(heroLoop);
 }
@@ -200,6 +228,21 @@ function renderMap() {
   });
   $('worldName').textContent = WORLDS[mapWorld].name;
   const next = store.nextLevelIndex(state);
+
+  // the boss door: fills up as letters and words are mastered
+  const gate = store.worldMastery(state, mapWorld);
+  const bossLevel = LEVELS.find((l) => l.world === mapWorld && l.boss);
+  const beaten = !!state.done[bossLevel.id];
+  const open = gate.have >= gate.need || state.unlockAll || beaten;
+  $('gate').classList.toggle('open', open);
+  $('gateFill').style.width = `${Math.min(100, (100 * gate.have) / gate.need)}%`;
+  $('gateText').textContent = open ? '' : `${gate.have} / ${gate.need}`;
+  $('gateIcon').textContent = beaten ? '✅' : open ? '👑' : '🔒';
+  $('gate').onclick = () => {
+    audio.unlock();
+    say(beaten ? 'You beat this boss!' : open ? 'The boss door is open!' : `You need ${gate.need - gate.have} more stickers to open the boss door. Keep playing to win them!`);
+  };
+
   const nodes = $('levelNodes');
   nodes.innerHTML = '';
   let n = 0;
@@ -208,13 +251,17 @@ function renderMap() {
     n++;
     const open = store.isUnlocked(state, i);
     const b = document.createElement('button');
-    b.className = `node ${open ? '' : 'locked'} ${i === next && open ? 'next' : ''}`;
+    b.className = `node ${level.boss ? 'boss' : ''} ${open ? '' : 'locked'} ${i === next && open ? 'next' : ''}`;
     const stars = state.done[level.id] || 0;
-    b.innerHTML = `<b>${open ? n : '🔒'}</b><small></small><span class="s">${'⭐'.repeat(stars)}</span>`;
+    b.innerHTML = `<b>${!open ? '🔒' : level.boss ? '👑' : n}</b><small></small><span class="s">${'⭐'.repeat(stars)}</span>`;
     b.querySelector('small').textContent = level.title;
     b.onclick = () => {
       audio.unlock();
-      if (!open) { audio.sfx('wrong'); return; }
+      if (!open) {
+        audio.sfx('wrong');
+        if (level.boss && state.done[LEVELS[i - 1].id]) $('gate').onclick();
+        return;
+      }
       audio.sfx('tap');
       startLevel(i);
     };
@@ -223,29 +270,31 @@ function renderMap() {
 }
 
 // ---- shop -----------------------------------------------------------------
-function shopItem(kind, id, cost, preview) {
+function shopItem(kind, id, def, preview) {
   const key = `${kind}:${id}`;
-  const owned = state.owned.includes(key);
+  const prize = def.power; // won from a boss instead of bought
+  const owned = prize ? store.hasPower(state, prize) : !def.cost || state.owned.includes(key);
+  const purse = def.gems ? store.gemBalance(state) : state.coins;
   const b = document.createElement('button');
-  b.className = `item ${state[kind] === id ? 'on' : ''} ${!owned && state.coins < cost ? 'poor' : ''}`;
+  b.className = `item ${state[kind] === id ? 'on' : ''} ${!owned && (prize || purse < def.cost) ? 'poor' : ''}`;
   b.setAttribute('aria-label', `${id} ${kind}`);
   b.append(preview);
   if (!owned) {
     const p = document.createElement('span');
-    p.className = 'price';
-    p.innerHTML = `<span class="coin"></span>${cost}`;
+    p.className = `price ${def.gems ? 'gem' : ''}`;
+    p.innerHTML = prize ? '👑🔒' : def.gems ? `💎 ${def.cost}` : `<span class="coin"></span>${def.cost}`;
     b.append(p);
   }
   b.onclick = () => {
     if (!owned) {
-      if (state.coins < cost) {
+      if (prize || purse < def.cost) {
         audio.sfx('wrong');
         b.classList.add('nope');
-        say(`You need ${cost - state.coins} more coins.`);
+        say(prize ? 'Beat the last boss to win this one.' : `You need ${def.cost - purse} more ${def.gems ? 'gems' : 'coins'}.`);
         setTimeout(() => b.classList.remove('nope'), 300);
         return;
       }
-      state.coins -= cost;
+      if (def.gems) state.gemsSpent = (state.gemsSpent || 0) + def.cost; else state.coins -= def.cost;
       state.owned.push(key);
       audio.sfx('buy');
     } else audio.sfx('tap');
@@ -259,19 +308,26 @@ function shopItem(kind, id, cost, preview) {
 function renderShop() {
   const colors = $('shopColors');
   const hats = $('shopHats');
-  colors.innerHTML = '';
-  hats.innerHTML = '';
+  const pets = $('shopPets');
+  colors.innerHTML = hats.innerHTML = pets.innerHTML = '';
   for (const [id, c] of Object.entries(COLORS)) {
     const sw = document.createElement('span');
     sw.className = 'sw';
-    sw.style.background = c.hex;
-    colors.append(shopItem('color', id, c.cost, sw));
+    sw.style.background = c.hex === 'rainbow' ? 'conic-gradient(#ff5d5d, #ffd23f, #7ed957, #4db8ff, #a06cd5, #ff5d5d)' : c.hex;
+    colors.append(shopItem('color', id, c, sw));
   }
   for (const [id, h] of Object.entries(HATS)) {
     const cv = document.createElement('canvas');
     cv.width = cv.height = 112;
     drawHero(cv.getContext('2d'), 56, 100, 1.5, { color: COLORS[state.color].hex, hat: id, t: 0.5 });
-    hats.append(shopItem('hat', id, h.cost, cv));
+    hats.append(shopItem('hat', id, h, cv));
+  }
+  for (const [id, pet] of Object.entries(PETS)) {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 112;
+    const ctx = cv.getContext('2d');
+    if (id === 'none') { ctx.font = '60px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🚫', 56, 78); } else { ctx.translate(56, 60); ctx.scale(2.6, 2.6); drawPet(ctx, 0, 0, id, 0.5, 1); }
+    pets.append(shopItem('pet', id, pet, cv));
   }
 }
 
@@ -331,10 +387,11 @@ function renderParent() {
     <section>
       <h3>Worlds</h3>
       ${WORLDS.map((w, i) => {
-        const ls = LEVELS.filter((l) => l.world === i);
-        return meter(`${w.icon} ${w.name}`, ls.filter((l) => state.done[l.id]).length, ls.length);
+        const g = store.worldMastery(state, i);
+        return meter(`${w.icon} ${w.name}`, g.have, g.total);
       }).join('')}
-      <label><input type="checkbox" id="optUnlock" ${state.unlockAll ? 'checked' : ''}> Unlock every level (to start further along)</label>
+      <p>Each world ends with a boss. Its door opens once 80% of that world's letters or words are learned, so he replays levels (each has three layouts) until they stick. Beating the boss opens the next world and wins a new power: double jump, dash, coin magnet, bubble shield.</p>
+      <label><input type="checkbox" id="optUnlock" ${state.unlockAll ? 'checked' : ''}> Unlock every level and power (to start further along)</label>
     </section>
     <section>
       <h3>Sound</h3>

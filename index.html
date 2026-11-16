@@ -39,6 +39,7 @@
       <div class="wallet"><span class="coin"></span><b data-coins>0</b></div>
     </header>
     <h2 id="worldName"></h2>
+    <button id="gate" class="gate" aria-label="Boss door"><span>📒</span><div><i id="gateFill"></i></div><b id="gateText"></b><span id="gateIcon">👑</span></button>
     <div id="levelNodes" class="nodes"></div>
   </section>
 
@@ -59,6 +60,7 @@
       <button id="btnRight" class="pad-btn" aria-label="Right">▶</button>
     </div>
     <div class="pad right">
+      <button id="btnDash" class="pad-btn dash" aria-label="Dash" hidden>💨</button>
       <button id="btnJump" class="pad-btn jump" aria-label="Jump">⬆</button>
     </div>
     <div class="rotate-hint">↻ Turn sideways for a bigger view</div>
@@ -76,6 +78,7 @@
     <div id="done" class="overlay" hidden>
       <div class="card">
         <div id="doneStars" class="stars"><i>⭐</i><i>⭐</i><i>⭐</i></div>
+        <div id="donePower" class="power" hidden><span id="donePowerIcon"></span><b id="donePowerName"></b></div>
         <div class="row tally">
           <div class="wallet"><span class="coin"></span><b id="doneCoins">0</b></div>
           <div id="doneGems" class="gems"><i></i><i></i><i></i></div>
@@ -94,13 +97,14 @@
     <header class="bar">
       <button class="round-btn small" data-go="title" aria-label="Back">◀</button>
       <h2>Dress up Pip</h2>
-      <div class="wallet"><span class="coin"></span><b data-coins>0</b></div>
+      <div class="row wallets"><div class="wallet"><span class="coin"></span><b data-coins>0</b></div><div class="wallet">💎 <b data-gems>0</b></div></div>
     </header>
     <div class="shop-body">
-      <canvas id="shopHero" width="240" height="280" aria-hidden="true"></canvas>
-      <div>
+      <canvas id="shopHero" width="300" height="280" aria-hidden="true"></canvas>
+      <div class="shop-lists">
         <div id="shopColors" class="shop-grid"></div>
         <div id="shopHats" class="shop-grid"></div>
+        <div id="shopPets" class="shop-grid"></div>
       </div>
     </div>
   </section>
