@@ -358,8 +358,9 @@ function renderParent() {
     };
   });
   $('optTest').onclick = () => { audio.unlock(); say('Find the letter em. Great job!'); };
-  $('optReset').onclick = () => {
-    if (!confirm('Erase all coins, stars and learning progress?')) return;
+  $('optReset').onclick = (e) => {
+    // Two taps instead of a browser dialog, which some app views never show.
+    if (!e.target.dataset.sure) { e.target.dataset.sure = '1'; e.target.textContent = 'Tap again to erase coins, stars and learning progress'; return; }
     state = store.reset();
     Object.assign(audio.settings, state.settings);
     show('parent');
