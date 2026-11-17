@@ -10,6 +10,14 @@ import { drawHero, drawPet, drawCritter, critterColor, COLORS, HATS, PETS } from
 const $ = (id) => document.getElementById(id);
 let state = store.load();
 Object.assign(audio.settings, state.settings);
+// In the Android app, if the web storage lost the save, bring back the native copy.
+store.restoreNative(state).then((copy) => {
+  if (!copy || screen !== 'title') return;
+  state = copy;
+  Object.assign(audio.settings, state.settings);
+  store.save(state);
+  show('title');
+});
 
 let current = 0;       // index of the level being played
 let mapWorld = 0;

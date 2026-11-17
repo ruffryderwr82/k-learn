@@ -360,7 +360,7 @@ const train = {
     tr.voiced = tr.cars.every((c) => m.hooks.hasSound?.(c.s));
     tr.pass = 0;
     tr.passes = tr.voiced ? PASS_SPEED.length : 1;
-    tr.x = -tr.len - 40; // x of the back of the last car; the engine leads on the right
+    tr.x = VW + 40; // x of the front of the engine; the train drives right to left so the word reads in order
     tr.v = 0;
     tr.phase = 'wait';
     tr.picked = [];
@@ -372,14 +372,14 @@ const train = {
   step(m, dt) {
     const tr = m.tr;
     if (tr.phase === 'pass' || tr.phase === 'arrive' || tr.leave) {
-      tr.x += tr.v * dt;
+      tr.x -= tr.v * dt;
       if (Math.random() < tr.v / 2500) m.hooks.sfx?.('chug');
-      if (Math.random() < 0.3) m.particles.push({ x: tr.x + tr.len - 34, y: TRAIN_Y - 128, vx: -tr.v * 0.3 - 20, vy: -60, life: 0.9, color: 'rgba(255,255,255,0.8)', size: 8 + Math.random() * 6, g: -20 });
+      if (Math.random() < 0.3) m.particles.push({ x: tr.x + 43, y: TRAIN_Y - 128, vx: tr.v * 0.3 + 20, vy: -60, life: 0.9, color: 'rgba(255,255,255,0.8)', size: 8 + Math.random() * 6, g: -20 });
     }
-    // each car plays its sound as it crosses the middle of the screen
+    // each car plays its sound as it crosses the middle of the screen: first letter first
     tr.cars.forEach((c, i) => {
-      const cx = tr.x + (tr.cars.length - 1 - i) * (CAR_W + 10) + CAR_W / 2;
-      if (!c.sounded && tr.phase === 'pass' && cx >= VW / 2) {
+      const cx = train.carX(tr, i) + CAR_W / 2;
+      if (!c.sounded && tr.phase === 'pass' && cx <= VW / 2) {
         c.sounded = true;
         c.flash = m.t;
         if (tr.voiced) m.hooks.sound?.(c.s);
@@ -387,22 +387,21 @@ const train = {
     });
     if (tr.phase === 'pass') {
       // cruise in, slow to this pass's speed while the cars cross the bell, then cruise out
-      const carX = (i) => tr.x + (tr.cars.length - 1 - i) * (CAR_W + 10) + CAR_W / 2;
-      const sounding = carX(0) > VW / 2 - 150 && !tr.cars[tr.cars.length - 1].sounded;
+      const sounding = train.carX(tr, 0) + CAR_W / 2 < VW / 2 + 150 && !tr.cars[tr.cars.length - 1].sounded;
       const want = sounding ? PASS_SPEED[tr.pass] : CRUISE;
       tr.v += (want - tr.v) * Math.min(1, (sounding ? 9 : 3) * dt);
     }
-    if (tr.phase === 'pass' && tr.x > VW + 40) {
+    if (tr.phase === 'pass' && tr.x + tr.len < -40) {
       tr.pass++;
-      tr.x = -tr.len - 40;
+      tr.x = VW + 40;
       for (const c of tr.cars) c.sounded = false;
       if (tr.pass < tr.passes) tr.v = CRUISE;
       else { tr.phase = 'arrive'; tr.v = CRUISE; }
     }
     if (tr.phase === 'arrive') {
       const stopAt = VW / 2 - tr.len / 2;
-      tr.v = clamp((stopAt - tr.x) * 2.4, 60, CRUISE);
-      if (tr.x >= stopAt - 1) {
+      tr.v = clamp((tr.x - stopAt) * 2.4, 60, CRUISE);
+      if (tr.x <= stopAt + 1) {
         tr.x = stopAt;
         tr.v = 0;
         tr.phase = 'choose';
@@ -415,6 +414,9 @@ const train = {
     if (m.auto && tr.phase === 'choose' && m.t - tr.chooseT > 0.3) train.tap(m, train.choiceX(m, m.q.answer), 500);
   },
 
+  // left edge of car i: the engine is in front (on the left), car 0 right behind it
+  carX(tr, i) { return tr.x + ENGINE_W + 10 + i * (CAR_W + 10); },
+
   // where picture i sits along the bottom (two pictures sit closer together)
   choiceX(m, i) {
     const k = m.q.choices.length === 2 ? (i === 0 ? 0.5 : 1.5) : i;
@@ -425,7 +427,7 @@ const train = {
     const tr = m.tr;
     // tap the train to hear the sounds again
     if (tr.phase === 'choose' && y > TRAIN_Y - 140 && y < TRAIN_Y + 20 && x > tr.x && x < tr.x + tr.len) {
-      tr.cars.slice().reverse().forEach((c, i) => {
+      tr.cars.forEach((c, i) => {
         m.after(i * 0.55, () => { c.flash = m.t; if (tr.voiced) m.hooks.sound?.(c.s); });
       });
       if (!tr.voiced) m.hooks.say?.('Read the train!');
@@ -472,7 +474,7 @@ const train = {
     ctx.textAlign = 'center';
     ctx.fillText('🔔', VW / 2, TRAIN_Y - 220);
 
-    // the cars (back of the train on the left) then the engine
+    // the engine (in front, on the left, facing left) then the cars in word order
     const wheel = (x) => {
       ctx.fillStyle = '#26314f';
       ctx.beginPath(); ctx.arc(x, TRAIN_Y - 4, 13, 0, 7); ctx.fill();
@@ -483,7 +485,7 @@ const train = {
     };
     const colors = ['#ff6b6b', '#4db8ff', '#7ed957', '#ffd23f', '#a06cd5'];
     tr.cars.forEach((c, i) => {
-      const cx = tr.x + (tr.cars.length - 1 - i) * (CAR_W + 10);
+      const cx = train.carX(tr, i);
       const lit = m.t - c.flash < 0.45;
       const lift = lit ? Math.sin(((m.t - c.flash) / 0.45) * Math.PI) * 14 : 0;
       ctx.save();
@@ -503,9 +505,13 @@ const train = {
       wheel(cx + 24);
       wheel(cx + CAR_W - 24);
       ctx.fillStyle = '#26314f';
-      ctx.fillRect(cx + CAR_W, TRAIN_Y - 40, 10, 6);
+      ctx.fillRect(cx - 10, TRAIN_Y - 40, 10, 6); // coupling to the car (or engine) in front
     });
-    const ex = tr.x + tr.len - ENGINE_W;
+    // the engine is drawn facing right, then mirrored so it faces left
+    ctx.save();
+    ctx.translate(tr.x * 2 + ENGINE_W, 0);
+    ctx.scale(-1, 1);
+    const ex = tr.x;
     ctx.fillStyle = '#e63946';
     rr(ctx, ex, TRAIN_Y - 82, ENGINE_W - 20, 64, 12);
     ctx.fill();
@@ -523,6 +529,7 @@ const train = {
     wheel(ex + 30);
     wheel(ex + 80);
     wheel(ex + 112);
+    ctx.restore();
 
     // the pictures to pick from
     if (tr.phase === 'choose' || tr.phase === 'done') {

@@ -1,3 +1,5 @@
+import { hasNative, fileWrite, fileRead, fileDelete, fileList, toBase64, fromBase64 } from './native.js';
+
 // Sound: synthesized effects, music for each world, and the speaking voice.
 // No audio files, so the whole game works offline from a few kilobytes.
 
@@ -345,7 +347,46 @@ export async function loadClips() {
       req.onerror = () => reject(req.error);
     });
   } catch { /* no recordings available */ }
+  await restoreNativeClips();
   return clips.size;
+}
+
+// In the Android app every recording is also kept as a file (16-bit, about 150 KB each).
+// Any recording missing from the web storage is restored from those files.
+const CLIP_DIR = 'clips';
+const clipFile = (id, rate) => `${CLIP_DIR}/${id.replace(':', '__')}@${rate}.pcm`;
+
+async function restoreNativeClips() {
+  if (!hasNative()) return;
+  for (const name of await fileList(CLIP_DIR)) {
+    const m = name.match(/^(.+)@(\d+)\.pcm$/);
+    if (!m) continue;
+    const id = m[1].replace('__', ':');
+    if (clips.has(id)) continue;
+    const b64 = await fileRead(`${CLIP_DIR}/${name}`);
+    if (!b64) continue;
+    const bytes = fromBase64(b64);
+    const pcm16 = new Int16Array(bytes.buffer, 0, bytes.length >> 1);
+    const pcm = new Float32Array(pcm16.length);
+    for (let i = 0; i < pcm16.length; i++) pcm[i] = pcm16[i] / 32767;
+    const rate = Number(m[2]);
+    clips.set(id, { rate, pcm });
+    try { await tx('readwrite', (s) => s.put({ rate, pcm: pcm.buffer }, id)); } catch { /* still usable this session */ }
+  }
+}
+
+async function writeNativeClip(id, pcm, rate) {
+  if (!hasNative()) return;
+  await deleteNativeClip(id);
+  const pcm16 = new Int16Array(pcm.length);
+  for (let i = 0; i < pcm.length; i++) pcm16[i] = Math.max(-1, Math.min(1, pcm[i])) * 32767;
+  await fileWrite(clipFile(id, rate), toBase64(new Uint8Array(pcm16.buffer)));
+}
+
+async function deleteNativeClip(id) {
+  if (!hasNative()) return;
+  const prefix = `${id.replace(':', '__')}@`;
+  for (const name of await fileList(CLIP_DIR)) if (name.startsWith(prefix)) await fileDelete(`${CLIP_DIR}/${name}`);
 }
 
 export const hasSound = (id) => clips.has(id);
@@ -398,11 +439,13 @@ export function trim(pcm, rate) {
 export async function saveClip(id, pcm, rate) {
   clips.set(id, { rate, pcm });
   try { await tx('readwrite', (s) => s.put({ rate, pcm: pcm.buffer }, id)); } catch { /* kept for this session only */ }
+  await writeNativeClip(id, pcm, rate);
 }
 
 export async function deleteClip(id) {
   clips.delete(id);
   try { await tx('readwrite', (s) => s.delete(id)); } catch { /* ignore */ }
+  await deleteNativeClip(id);
 }
 
 let micStream = null;
