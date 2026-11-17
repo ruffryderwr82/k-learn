@@ -86,7 +86,49 @@ const run = (withSounds) => page.evaluate(async (withSounds) => {
 }, withSounds);
 const results = [...await run(false), ...await run(true)];
 
-let bad = 0;
+// Wrong answers: one miss swaps in a different question; three in a row knock Pip
+// back to the checkpoint, the gate resets, and the level can still be finished.
+const misses = await page.evaluate(() => {
+  const { game: g, startLevel } = window.__k;
+  const run = (seconds) => { for (let i = 0; i < seconds * 120; i++) g.step(1 / 120); };
+  const wrong = () => { const s = g.active; g.answer(s, s.slots.find((b) => b.choice !== (s.q.sequence ? s.q.sequence[s.step] : s.q.answer))); };
+  const right = () => { const s = g.active; if (s.q.sequence) { for (const c of s.q.sequence) g.answer(s, s.slots.find((b) => b.choice === c)); } else g.answer(s, s.slots.find((b) => b.choice === s.q.answer)); };
+  const toGate = (n) => { g.p.x = g.stations[n].c0 * 48 + 30; g.p.y = 11 * 48 - 42; g.p.vy = 0; run(0.2); };
+  const out = {};
+  startLevel(3);
+  g.stop();
+  toGate(0);
+  right();                      // open gate 1: that is now the checkpoint
+  const checkpointX = g.checkpoint.x;
+  toGate(1);
+  const first = g.active.q.item;
+  wrong();
+  out.livesAfterOne = 3 - g.strikes;
+  out.promptHidden = g.active === null;
+  run(3);
+  out.newQuestion = !!g.active && g.active.q.item !== first;
+  wrong(); run(3);
+  out.livesAfterTwo = 3 - g.strikes;
+  wrong();
+  out.dying = g.state === 'dying';
+  run(2.5);
+  out.backAtCheckpoint = g.state === 'play' && Math.abs(g.p.x - checkpointX) < 60;
+  out.livesRestored = g.strikes === 0;
+  out.gateWaiting = g.stations[1].state === 'idle' && g.active === null;
+  toGate(1);
+  out.asksAgain = !!g.active;
+  right();
+  out.gateOpens = g.stations[1].state === 'done' && g.tile(g.stations[1].barrierC, 5) === 0;
+  // a right answer between misses resets the count
+  toGate(2); wrong(); run(3); right(); toGate(3); wrong();
+  out.countResets = g.strikes === 1 && g.state === 'play';
+  return out;
+});
+const expected = { livesAfterOne: 2, livesAfterTwo: 1 }; // everything else should simply be true
+const missFails = Object.entries(misses).filter(([k, v]) => v !== (expected[k] ?? true));
+console.log('wrong-answer rules:', JSON.stringify(misses));
+
+let bad = missFails.length;
 for (const r of results) {
   if (!r.ok || r.firstTry !== (r.boss ? 5 : 6)) bad++;
   console.log(`${r.ok ? 'ok  ' : 'FAIL'} ${r.id.padEnd(22)} ${String(r.seconds).padStart(3)}s  ${r.width} tiles  coins ${r.coins ?? '-'}  first-try ${r.firstTry ?? '-'}/${r.boss ? 5 : 6} ${r.ok ? '' : 'stuck at column ' + r.stuckAt}`);

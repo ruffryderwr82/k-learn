@@ -55,6 +55,7 @@ const SFX = {
   bosshit: () => { tone(160, 0.3, { type: 'sawtooth', vol: 0.2, slide: -90 }); tone(1200, 0.15, { type: 'square', vol: 0.1, delay: 0.02 }); },
   bossdown: () => [784, 659, 523, 392, 262, 196].forEach((f, i) => tone(f, 0.25, { type: 'square', vol: 0.15, delay: i * 0.09 })),
   power: () => [392, 523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.3, { type: 'triangle', vol: 0.22, delay: i * 0.1 })),
+  die: () => [523, 494, 440, 392, 330, 262, 196].forEach((f, i) => tone(f, 0.16, { type: 'square', vol: 0.14, delay: i * 0.1 })),
   tap: () => tone(660, 0.06, { type: 'sine', vol: 0.15 }),
   buy: () => [784, 1047, 1568].forEach((f, i) => tone(f, 0.15, { type: 'triangle', vol: 0.2, delay: i * 0.07 })),
 };

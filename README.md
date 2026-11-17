@@ -51,7 +51,11 @@ sound at the start of moon?") and skips the blending questions that need real so
 How it keeps him learning rather than guessing:
 
 - **No reading needed to play.** Every prompt is spoken, menus are pictures, and tapping the prompt repeats it.
-- **Mistakes are safe.** A wrong block greys out, the voice says what that one was, and he tries again. Nothing is lost.
+- **A miss teaches, then moves on.** The voice says what he picked, the right answer lights up
+  green, and the gate swaps to a different question (the missed one comes back later, more often).
+- **Three misses in a row cost something.** Pip is knocked out and starts again from the last gate
+  he opened, so he has to run back. Three hearts at the top show how many tries are left; a right
+  answer refills them.
 - **It adapts.** Each sound and word has a mastery level. Weak ones come back more often, and about a third of questions review earlier levels.
 - **Knowing things is power.** Three first-try answers in a row trigger Super Spark: faster, coin magnet, Grumps pop on touch.
 - **Grown-ups page** (hold the button on the title screen) shows what is learned, what needs practice, and can unlock every level and power to start further along.

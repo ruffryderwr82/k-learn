@@ -259,3 +259,10 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; }
 
 .sticker.sight { height: 64px; font-size: 24px; }
 .sticker.sight i { font-style: normal; color: #e11d48; }
+
+/* tries left before being sent back to the checkpoint */
+.lives { display: flex; gap: 4px; background: rgba(38, 49, 79, .75); padding: 6px 12px; border-radius: 999px; font-size: 20px; line-height: 1.5; }
+.lives i { font-style: normal; color: rgba(255, 255, 255, .25); transition: color .2s, transform .2s; }
+.lives i.on { color: #ff4d6d; }
+.lives i:not(.on) { transform: scale(.8); }
+@media (max-width: 700px) { .streak { display: none; } }

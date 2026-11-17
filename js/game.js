@@ -39,7 +39,7 @@ function roundRect(ctx, x, y, w, h, r) {
 export class Game {
   /**
    * hooks: nextQuestion(avoidItem), onAnswer(question, firstTry), onPrompt(question|null, step),
-   *        ask(question), praise(question), wrong(question, choice), sound(soundId),
+   *        ask(question), praise(question), wrong(question, choice), died(), sound(soundId),
    *        onHud(state), onComplete(result), sfx(name)
    */
   constructor(canvas, hooks) {
@@ -87,6 +87,8 @@ export class Game {
     this.streak = 0;
     this.superT = 0;
     this.lastItem = null;
+    this.strikes = 0; // wrong answers in a row; three sends him back to the checkpoint
+    this.checkpoint = { x: this.p.x, y: this.p.y };
     this.active = null; // the station currently asking a question
     this.hooks.onPrompt?.(null);
     this._hud();
@@ -157,6 +159,18 @@ export class Game {
       m.x = nx;
     }
     if (p.riding) { const vx = p.vx; this._moveX(p.riding.dx); p.vx = vx; }
+
+    // three wrong answers in a row: Pip is knocked out, tumbles off the screen
+    // and starts again from the last gate he opened
+    if (this.state === 'dying') {
+      p.vy += GRAVITY * dt;
+      p.y += p.vy * dt;
+      p.spin = (this.t - this.dieT) * 10;
+      for (const q of this.particles) { q.life -= dt; q.vy += 900 * dt; q.x += q.vx * dt; q.y += q.vy * dt; }
+      this.particles = this.particles.filter((q) => q.life > 0);
+      if (this.t - this.dieT > 1.7) this._respawn();
+      return;
+    }
 
     if (this.state === 'won') {
       p.vx = 0;
@@ -373,18 +387,21 @@ export class Game {
   _stations() {
     const px = this.p.x + this.p.w / 2;
     for (const s of this.stations) {
-      if (s.state === 'rearm' && this.t >= s.rearmAt) {
-        // the boss fight asks again: put all three blocks back
+      if ((s.state === 'rearm' || s.state === 'swap') && this.t >= s.rearmAt) {
+        // ask something new (after a boss hit, or after a wrong answer): put all three blocks back
         for (const b of s.blocks) { this.setTile(b.c, b.r, T.BLOCK); this.setTile(b.c + 1, b.r, T.BLOCK); }
         s.state = 'idle';
       }
       if (s.state !== 'idle' || px < s.c0 * TILE) continue;
-      if (s.boss && this.boss.nextSpawn === Infinity) this.boss.nextSpawn = this.t + 4;
+      if (s.boss && this.boss.nextSpawn === Infinity) {
+        this.boss.nextSpawn = this.t + 4;
+        this.checkpoint = { x: (s.c0 - 3) * TILE, y: GROUND * TILE - PH }; // the arena door
+      }
       const q = this.hooks.nextQuestion(this.lastItem);
       this.lastItem = q.item;
       s.q = q;
       s.state = 'active';
-      s.firstTry = true;
+      s.firstTry = !s.missed; // for stars: was this gate opened without a miss?
       s.step = 0; // for spelling questions: how many letters are in place
       s.askedT = this.t;
       s.armed = false;
@@ -429,11 +446,7 @@ export class Game {
       // spelling: the letters must be bumped in order, one sound at a time
       if (slot.choice !== q.sequence[s.step]) {
         slot.missT = this.t;
-        s.firstTry = false;
-        this.streak = 0;
-        this.hooks.sfx?.('wrong');
-        this.hooks.wrong?.(q, q.choices[slot.choice]);
-        this._hud();
+        this._miss(s, slot);
         return;
       }
       slot.locked = true;
@@ -450,8 +463,9 @@ export class Game {
       s.state = 'done';
       this.active = null;
       this.score.right++;
+      this.strikes = 0;
       if (s.firstTry) this.score.firstTry++;
-      this.hooks.onAnswer?.(q, s.firstTry);
+      this.hooks.onAnswer?.(q, true);
       this.hooks.sfx?.('right');
       this.hooks.praise?.(q);
       this.hooks.onPrompt?.(null);
@@ -478,7 +492,8 @@ export class Game {
           this._burst(boss.x, boss.y - 50, BOSS_COLORS[this.world % 5], 50);
           this.hooks.sfx?.('bossdown');
         }
-        // open the gate
+        // open the gate; this is where he comes back to after three misses
+        this.checkpoint = { x: (s.barrierC + 1.5) * TILE - PW / 2, y: GROUND * TILE - PH };
         for (let r = 0; r < GROUND; r++) {
           this.setTile(s.barrierC, r, T.EMPTY);
           this._spark((s.barrierC + 0.5) * TILE, (r + 0.5) * TILE, '#b8f3ff', 3);
@@ -495,12 +510,52 @@ export class Game {
       }
     } else {
       slot.wrong = true;
-      s.firstTry = false;
-      s.shake = this.t;
-      this.streak = 0;
-      this.hooks.sfx?.('wrong');
+      this._miss(s, slot);
+    }
+    this._hud();
+  }
+
+  // A wrong answer. The right one is shown for a moment, then the gate asks a
+  // different question. Three in a row and Pip is sent back to the checkpoint.
+  _miss(s, slot) {
+    const q = s.q;
+    s.missed = true;
+    s.firstTry = false;
+    this.streak = 0;
+    this.strikes++;
+    this.active = null;
+    this.hooks.onAnswer?.(q, false);
+    this.hooks.onPrompt?.(null);
+    this.hooks.sfx?.('wrong');
+    s.state = 'swap';
+    if (this.strikes >= 3) {
+      s.rearmAt = Infinity; // reset when he respawns
+      this.state = 'dying';
+      this.dieT = this.t;
+      this.p.vx = 0;
+      this.p.vy = -780;
+      this.p.dashT = 0;
+      this._burst(this.p.x + this.p.w / 2, this.p.y + this.p.h / 2, '#ffffff', 20);
+      this.hooks.sfx?.('die');
+      this.hooks.died?.();
+    } else {
+      s.rearmAt = this.t + 2.4;
       this.hooks.wrong?.(q, q.choices[slot.choice]);
     }
+    this._hud();
+  }
+
+  _respawn() {
+    const p = this.p;
+    Object.assign(p, { x: this.checkpoint.x, y: this.checkpoint.y, vx: 0, vy: 0, spin: 0, grounded: true, invuln: 1.5, stun: 0, facing: 1, riding: null });
+    this.safe = { x: p.x, y: p.y };
+    this.strikes = 0;
+    this.state = 'play';
+    this.active = null;
+    // whatever gate he was at asks afresh when he gets back to it
+    for (const s of this.stations) if (s.state === 'swap' || s.state === 'active') s.rearmAt = 0;
+    this.cam.x = clamp(p.x - this.viewW * 0.4, 0, Math.max(0, this.lv.W * TILE - this.viewW));
+    this._burst(p.x + p.w / 2, p.y + p.h / 2, '#ffffff', 16);
     this._hud();
   }
 
@@ -632,6 +687,7 @@ export class Game {
       coins: this.score.coins,
       gems: [0, 1, 2].map((i) => this.gems.some((g) => g.i === i && (g.got || g.old))),
       streak: this.streak,
+      lives: 3 - this.strikes,
       super: this.superT > 0,
     });
   }
@@ -870,13 +926,20 @@ export class Game {
 
     // hero
     const p = this.p;
-    if (!(p.invuln > 0 && Math.floor(t * 14) % 2)) {
+    if (this.state === 'dying') {
+      // tumbling head over heels
+      ctx.save();
+      ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
+      ctx.rotate(p.spin || 0);
+      drawHero(ctx, 0, p.h / 2, 1, { ...this.look, facing: p.facing, t, air: true, vy: 0 });
+      ctx.restore();
+    } else if (!(p.invuln > 0 && Math.floor(t * 14) % 2)) {
       drawHero(ctx, p.x + p.w / 2, p.y + p.h, 1, {
         ...this.look, facing: p.facing, t, moving: Math.abs(p.vx) > 30 && p.grounded,
         air: !p.grounded, vy: p.vy, squash: p.squash, glow: this.superT > 0, cheer: this.state === 'won',
       });
     }
-    if (p.shield) {
+    if (p.shield && this.state !== 'dying') {
       ctx.strokeStyle = 'rgba(155, 231, 255, 0.9)';
       ctx.fillStyle = 'rgba(155, 231, 255, 0.18)';
       ctx.lineWidth = 3;
@@ -916,7 +979,7 @@ export class Game {
       const slots = s.state === 'idle' ? s.blocks.map((b) => ({ ...b, blank: true })) : s.slots;
       for (const b of slots) {
         const choice = b.blank ? null : s.q.choices[b.choice];
-        const over = s.state === 'done' || s.state === 'rearm';
+        const over = s.state === 'done' || s.state === 'rearm' || s.state === 'swap';
         const right = b.locked || (over && !s.q.sequence && b.choice === s.q.answer);
         const faded = b.wrong || (over && !right);
         let x = b.c * TILE;
@@ -983,17 +1046,18 @@ export class Game {
     const { ctx, t } = this;
     const COLORS = ['#ff8fab', '#7fd4ff', '#b9f18d'];
     for (const a of s.slots) {
-      const right = s.state === 'done' && a.choice === s.q.answer;
-      const since = t - (a.bumpT ?? -9);
+      const over = s.state === 'done' || s.state === 'swap';
+      const right = over && a.choice === s.q.answer;
+      const since = t - (a.wrong ? a.bumpT : a.endT ?? t);
       // popped or finished ones shrink away; the right one lingers a moment longer
-      const gone = a.wrong || s.state === 'done';
+      const gone = a.wrong || over;
       const k = gone ? Math.max(0, 1 - since / (right ? 0.9 : 0.25)) : Math.min(1, (t - a.pop) / 0.25);
-      if (gone && s.state === 'done' && !right && a.bumpT === undefined) a.bumpT = t;
+      if (over && !a.wrong && a.endT === undefined) a.endT = t; // the others leave when the question is over
       if (k <= 0) continue;
       const choice = s.q.choices[a.choice];
       ctx.save();
       if (s.live === 'balloons') {
-        ctx.translate(a.x, a.y - (right ? since * 120 : 0));
+        ctx.translate(a.x, a.y - (right && s.state === 'done' ? since * 120 : 0));
         ctx.scale(k, k);
         ctx.strokeStyle = 'rgba(38,49,79,0.5)';
         ctx.lineWidth = 2;

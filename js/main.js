@@ -45,26 +45,29 @@ document.addEventListener('click', (e) => {
 // ---- the game -------------------------------------------------------------
 const game = new Game($('game'), {
   nextQuestion: (avoid) => makeQuestion(LEVELS[current], state.mastery, Math.random, avoid, audio.hasSound),
-  onAnswer: (q, firstTry) => { store.recordAnswer(state, q.key, firstTry); store.save(state); },
+  onAnswer: (q, right) => { store.recordAnswer(state, q.key, right); store.save(state); },
   onPrompt: showPrompt,
   onHud: (h) => {
     $('hudCoins').textContent = h.coins;
     [...$('hudGems').children].forEach((el, i) => el.classList.toggle('on', h.gems[i]));
     [...$('hudStreak').children].forEach((el, i) => el.classList.toggle('on', h.super || i < h.streak));
+    [...$('hudLives').children].forEach((el, i) => el.classList.toggle('on', i < h.lives));
     $('hudStreak').classList.toggle('super', h.super);
   },
   onComplete: finishLevel,
   ask: (q) => audio.play(promptScript(q)),
   praise: (q) => audio.play(q.praiseAudio || q.praise),
+  // A miss: say what was picked (by its sound when there is one). The right answer
+  // lights up on screen, and the gate then asks something new.
   wrong: (q, choice) => {
-    if (q.sequence) return audio.play(['Not yet. Listen.', q.item]);
-    // name what was picked (by its sound when there is one), then ask again
+    if (q.sequence) return audio.play(['Not quite.', q.item]);
     const bySound = choice.sound && audio.hasSound(choice.sound) && promptScript(q).some((part) => part.s);
     const picked = bySound ? ['That one says', { s: choice.sound }]
       : choice.names ? ['That one is', ...choice.names.map((name) => ({ name }))]
         : [choice.say ? `That one is ${choice.say}.` : 'Not that one.'];
-    return audio.play([...picked, 'Try again.', { pause: 200 }, ...promptScript(q)]);
+    return audio.play(picked);
   },
+  died: () => audio.play('Oh no! Three misses. Back you go. You can do it!'),
   sound: (id) => audio.playSound(id),
   sfx: audio.sfx,
 });
