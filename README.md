@@ -132,6 +132,22 @@ the APK: no server and no internet needed.
 - **Build it yourself:** with Android Studio (or JDK 21 + Android SDK) installed, run `npm ci && npm run android:apk`.
   The APK lands in `android/app/build/outputs/apk/debug/`.
 
+**Progress is kept across updates.** Installing a new release over the old one keeps his
+stars, coins, learned letters, rescued letters and your recordings:
+
+- The save stays in the app's storage, which updates do not touch (same app id, same signing
+  key, and the web address it runs at is pinned in `capacitor.config.json`).
+- The previous save is kept as a backup every time, and a save that cannot be read is set aside
+  rather than overwritten.
+- The app also keeps a second copy of the save and of every recording in Android's own storage.
+  If the game's storage is ever emptied, both come back from that copy on the next start.
+  These copies are included in Android's device backup (if it is turned on), so they can come
+  back after a reinstall or on a new tablet signed in to the same Google account.
+- Older saves are converted forward, never thrown away. Levels are identified by their name, not
+  their position, so adding levels in an update does not move his stars.
+
+Uninstalling the app (rather than installing over it) still erases what is on the tablet.
+
 Inside the app the voice comes from the tablet's own text-to-speech engine. If it is silent,
 check Settings → Accessibility → Text-to-speech and make sure English voice data is installed.
 
@@ -143,7 +159,8 @@ sideloading at home but not for a store release.
 
 ```sh
 npm test                    # curriculum and level-generator checks
-npm start & node tests/playtest.mjs   # a bot plays all 141 layouts and all 12 bonus games, with and without recorded sounds, to prove each can be finished (needs Playwright)
+npm start & node tests/savetest.mjs   # progress and recordings survive an update and a wiped web storage
+node tests/playtest.mjs   # a bot plays all 141 layouts and all 12 bonus games, with and without recorded sounds, to prove each can be finished (needs Playwright)
 ```
 
 ## Where things are

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and older: what goes into the device's backup. The native copy of the save
+     (shared preferences) and the grown-up's recordings, so a reinstall can bring them back. -->
+<full-backup-content>
+    <include domain="sharedpref" path="." />
+    <include domain="file" path="clips/" />
+</full-backup-content>

@@ -1,7 +1,20 @@
 // Saved state: coins, unlocked levels, shop items and per-skill mastery.
-import { LEVELS, POWERS, worldSkills, skillKey } from './curriculum.js';
+//
+// Keeping it safe:
+//  - The save lives in the app's web storage, which app updates keep (the app id, signing key
+//    and web address it runs at never change; see capacitor.config.json).
+//  - Before each save, the previous one is kept as a backup. A save that cannot be read is
+//    set aside, never silently replaced, and the backup is used instead.
+//  - In the Android app a second copy goes to native storage, which Android also includes in
+//    its device backup. If the web storage is ever empty, that copy is restored.
+//  - Saves carry a version number, and older saves are converted forward, never discarded.
+import { LEVELS, BONUSES, POWERS, worldSkills, skillKey } from './curriculum.js';
+import { prefGet, prefSet, hasNative } from './native.js';
 
-const KEY = 'k-learn-save-v1';
+const KEY = 'k-learn-save-v1';          // keep this name forever: changing it would lose every save
+const BACKUP = `${KEY}-backup`;
+const NATIVE_KEY = 'k-learn-save';
+export const SAVE_VERSION = 2;
 
 const fresh = () => ({
   coins: 0,
@@ -19,31 +32,90 @@ const fresh = () => ({
   rescued: {},    // letter -> times freed (they live in the Letter Village)
   bonus: {},      // bonus game id -> best stars
   bonusGems: 0,
+  saveVersion: SAVE_VERSION,
+  savedAt: 0,     // when this save was written (to pick the newest copy)
 });
 
 let memory = null; // fallback when storage is unavailable (private mode, sandboxed frames)
+let nativeChecked = !hasNative(); // do not write the native copy until it has been read once
+
+/** Bring a save from any earlier version of the game up to date. Nothing is thrown away. */
+export function migrate(raw) {
+  const s = { ...fresh(), ...raw };
+  s.settings = { ...fresh().settings, ...(raw.settings || {}) };
+  if ((raw.saveVersion || 1) < 2) {
+    // version 1 named levels by position (canyon-3); now they are named by content (canyon:blend-it)
+    const levels = Object.fromEntries(LEVELS.map((l) => [l.legacyId, l.id]));
+    for (const field of ['done', 'gems', 'plays']) {
+      s[field] = Object.fromEntries(Object.entries(s[field] || {}).map(([k, v]) => [levels[k] || k, v]));
+    }
+    const bonuses = Object.fromEntries(BONUSES.map((b) => [b.legacyId, b.id]));
+    s.bonus = Object.fromEntries(Object.entries(s.bonus || {}).map(([k, v]) => [bonuses[k] || k, v]));
+  }
+  s.saveVersion = SAVE_VERSION;
+  return s;
+}
+
+function parse(raw) {
+  if (!raw) return null;
+  try {
+    const data = JSON.parse(raw);
+    return data && typeof data === 'object' ? migrate(data) : null;
+  } catch { return null; }
+}
 
 export function load() {
   try {
     const raw = localStorage.getItem(KEY);
+    const s = parse(raw);
+    if (s) return s;
     if (raw) {
-      const s = { ...fresh(), ...JSON.parse(raw) };
-      s.settings = { ...fresh().settings, ...s.settings };
-      return s;
+      // unreadable: set it aside rather than overwrite it, and fall back to the backup
+      localStorage.setItem(`${KEY}-unreadable-${Date.now()}`, raw);
     }
-  } catch { /* fall through */ }
+    const backup = parse(localStorage.getItem(BACKUP));
+    if (backup) return backup;
+  } catch { /* storage unavailable */ }
   return memory || fresh();
 }
 
 export function save(state) {
   memory = state;
-  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* keep in memory only */ }
+  state.saveVersion = SAVE_VERSION;
+  state.savedAt = Date.now();
+  const json = JSON.stringify(state);
+  try {
+    const prev = localStorage.getItem(KEY);
+    if (prev && parse(prev)) localStorage.setItem(BACKUP, prev);
+    localStorage.setItem(KEY, json);
+  } catch { /* keep in memory only */ }
+  if (nativeChecked) prefSet(NATIVE_KEY, json);
+}
+
+/**
+ * In the Android app: read the native copy of the save. Returns it if it is newer than
+ * `current` (for example after the web storage was reset), otherwise null.
+ */
+export async function restoreNative(current) {
+  if (!hasNative()) return null;
+  const copy = parse(await prefGet(NATIVE_KEY));
+  nativeChecked = true;
+  if (copy && (copy.savedAt || 0) > (current.savedAt || 0)) return copy;
+  if ((current.savedAt || 0) > 0) prefSet(NATIVE_KEY, JSON.stringify(current)); // bring the copy up to date
+  return null;
 }
 
 export function reset() {
   memory = null;
-  try { localStorage.removeItem(KEY); } catch { /* ignore */ }
-  return fresh();
+  try {
+    // the old save is kept as the backup, so "Erase all progress" can still be undone by hand
+    const prev = localStorage.getItem(KEY);
+    if (prev) localStorage.setItem(BACKUP, prev);
+    localStorage.removeItem(KEY);
+  } catch { /* ignore */ }
+  const s = fresh();
+  if (nativeChecked) prefSet(NATIVE_KEY, JSON.stringify(s));
+  return s;
 }
 
 export const MASTERED = 3;

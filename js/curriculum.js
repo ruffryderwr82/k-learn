@@ -169,12 +169,17 @@ function buildLevels() {
   const add = (world, title, types, pool, extra = {}) => {
     const prev = L.filter((l) => l.world === world && l.poolKind === extra.poolKind);
     const review = [...new Set(prev.flatMap((l) => l.pool))];
-    L.push({ id: `${WORLDS[world].id}-${L.filter((l) => l.world === world).length + 1}`, world, title, types, pool, review, pools: {}, ...extra });
+    // The id is built from the level's name, not its position, so adding or moving levels in a
+    // later update never hands his stars to a different level. legacyId is the old position-based
+    // id, kept so saves from before this change can be carried over.
+    const legacyId = extra.boss ? `${WORLDS[world].id}-boss` : `${WORLDS[world].id}-${L.filter((l) => l.world === world).length + 1}`;
+    const slug = String(title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    L.push({ world, title, types, pool, review, pools: {}, ...extra, id: `${WORLDS[world].id}:${extra.boss ? 'boss' : slug}`, legacyId });
   };
   // Each world ends with a boss fight that asks about everything taught in that world.
   const boss = (world, types, poolKind, pools = {}) => {
     const pool = [...new Set(L.filter((l) => l.world === world && l.poolKind === poolKind).flatMap((l) => l.pool))];
-    add(world, 'Boss', types, pool, { poolKind, boss: true, id: `${WORLDS[world].id}-boss`, review: [], pools });
+    add(world, 'Boss', types, pool, { poolKind, boss: true, review: [], pools });
   };
 
   // World 1: the sound each letter makes (and its name), a few letters at a time.
@@ -600,7 +605,10 @@ export const BONUSES = (() => {
   WORLDS.forEach((_, w) => {
     const regular = LEVELS.map((l, i) => [l, i]).filter(([l]) => l.world === w && !l.boss).map(([, i]) => i);
     regular.forEach((i, k) => {
-      if ((k + 1) % 3 === 0) out.push({ id: `bonus-${out.length + 1}`, after: i, world: w, game: MINI[out.length % MINI.length].id });
+      if ((k + 1) % 3 === 0) {
+        // named after the level it follows, so it stays the same bonus across updates
+        out.push({ id: `bonus:${LEVELS[i].id}`, legacyId: `bonus-${out.length + 1}`, after: i, world: w, game: MINI[out.length % MINI.length].id });
+      }
     });
   });
   return out;
