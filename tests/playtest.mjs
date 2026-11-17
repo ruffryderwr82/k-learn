@@ -82,6 +82,21 @@ const run = (withSounds) => page.evaluate(async (withSounds) => {
     inp.left = inp.right = inp.jump = inp.dash = false;
     out.push({ id: `${LEVELS[i].id}/${variant}${withSounds ? ' +sounds' : ''}`, boss: !!LEVELS[i].boss, ok: !!done, seconds: Math.round(steps / 120), width: g.lv.W, ...(done || { stuckAt: Math.round(g.p.x / 48), dump: dump(g) }) });
   }
+  // every bonus mini-game, played start to finish
+  const m = window.__k.minis;
+  window.__k.BONUSES.forEach((bonus, i) => {
+    let res = null;
+    const keep = m.hooks.onComplete;
+    m.hooks.onComplete = (r) => { res = r; };
+    window.__k.startBonus(i);
+    m.stop();
+    m.auto = true;
+    let steps = 0;
+    for (; steps < 120 * 300 && !res; steps++) m.step(1 / 120);
+    m.auto = false;
+    m.hooks.onComplete = keep;
+    out.push({ id: `${bonus.id} ${bonus.game}${withSounds ? ' +sounds' : ''}`, boss: false, mini: true, ok: !!res, seconds: Math.round(steps / 120), width: 0, firstTry: res ? res.firstTry : 0, total: res ? res.total : 0, coins: res?.coins });
+  });
   return out;
 }, withSounds);
 const results = [...await run(false), ...await run(true)];
@@ -130,8 +145,8 @@ console.log('wrong-answer rules:', JSON.stringify(misses));
 
 let bad = missFails.length;
 for (const r of results) {
-  if (!r.ok || r.firstTry !== (r.boss ? 5 : 6)) bad++;
-  console.log(`${r.ok ? 'ok  ' : 'FAIL'} ${r.id.padEnd(22)} ${String(r.seconds).padStart(3)}s  ${r.width} tiles  coins ${r.coins ?? '-'}  first-try ${r.firstTry ?? '-'}/${r.boss ? 5 : 6} ${r.ok ? '' : 'stuck at column ' + r.stuckAt}`);
+  if (!r.ok || r.firstTry !== (r.mini ? r.total : r.boss ? 5 : 6)) bad++;
+  console.log(`${r.ok ? 'ok  ' : 'FAIL'} ${r.id.padEnd(22)} ${String(r.seconds).padStart(3)}s  ${r.mini ? 'bonus game' : r.width + ' tiles'}  coins ${r.coins ?? '-'}  first-try ${r.firstTry ?? '-'}/${r.mini ? r.total : r.boss ? 5 : 6} ${r.ok ? '' : 'stuck at column ' + r.stuckAt}`);
   if (r.dump) console.log(r.dump);
 }
 if (errors.length) console.log('page errors:', errors);

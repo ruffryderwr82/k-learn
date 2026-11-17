@@ -17,6 +17,8 @@ const fresh = () => ({
   unlockAll: false,
   settings: { voice: true, sfx: true, music: true, kidName: '' },
   rescued: {},    // letter -> times freed (they live in the Letter Village)
+  bonus: {},      // bonus game id -> best stars
+  bonusGems: 0,
 });
 
 let memory = null; // fallback when storage is unavailable (private mode, sandboxed frames)
@@ -100,7 +102,8 @@ export function hasPower(state, id) {
 }
 
 export function gemCount(state) {
-  return Object.values(state.gems).reduce((n, g) => n + g.filter(Boolean).length, 0);
+  // gems found hidden in levels, plus one for the first finish of each bonus game
+  return Object.values(state.gems).reduce((n, g) => n + g.filter(Boolean).length, 0) + (state.bonusGems || 0);
 }
 
 export const gemBalance = (state) => gemCount(state) - (state.gemsSpent || 0);

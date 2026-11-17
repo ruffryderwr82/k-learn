@@ -89,6 +89,31 @@
         <div class="row">
           <button id="btnAgain" class="round-btn" aria-label="Play again">🔁</button>
           <button id="btnDoneMap" class="round-btn" aria-label="Map">🗺️</button>
+          <button id="btnBonus" class="round-btn bonus" aria-label="Bonus game" hidden>🎮</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bonus mini-games -->
+  <section id="mini" class="screen">
+    <canvas id="miniCanvas"></canvas>
+    <div class="hud">
+      <button id="btnMiniQuit" class="round-btn small" aria-label="Back to the map">◀</button>
+      <div class="wallet"><span class="coin"></span><b id="miniCoins">0</b></div>
+    </div>
+    <div id="miniDone" class="overlay" hidden>
+      <div class="card">
+        <div id="miniName" class="mini-name"></div>
+        <div id="miniStars" class="stars"><i>⭐</i><i>⭐</i><i>⭐</i></div>
+        <div class="row tally">
+          <div class="wallet"><span class="coin"></span><b id="miniDoneCoins">0</b></div>
+          <div id="miniGem" class="wallet" hidden>💎 +1</div>
+        </div>
+        <button id="btnMiniNext" class="big-btn" aria-label="Next level">▶</button>
+        <div class="row">
+          <button id="btnMiniAgain" class="round-btn" aria-label="Play again">🔁</button>
+          <button id="btnMiniMap" class="round-btn" aria-label="Map">🗺️</button>
         </div>
       </div>
     </div>

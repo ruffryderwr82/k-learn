@@ -280,3 +280,15 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; }
 #doneCritters[hidden] { display: none; }
 .recorder .big.small { font-size: 24px; min-width: 150px; }
 .parent-body input[type=text] { font: inherit; padding: 8px 10px; border: 2px solid #d9d2bd; border-radius: 10px; min-width: 0; flex: 1; max-width: 260px; }
+
+/* bonus mini-games */
+#mini { padding: 0; background: #14274e; }
+#miniCanvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+.mini-name { font-size: 30px; color: var(--ink); }
+.node.bonus { width: 92px; height: 92px; border-radius: 50%; background: #ffe9a8; box-shadow: 0 7px 0 #e0b84a, 0 12px 18px rgba(0, 0, 0, .2); align-self: center; }
+.node.bonus b { font-size: 34px; }
+.node.bonus small { font-size: 11px; max-width: 80px; }
+.node.bonus.locked { background: #c9d3e6; box-shadow: 0 7px 0 #a5b0c8; }
+.round-btn.bonus { background: #ffd23f; box-shadow: 0 6px 0 #e0a800, 0 10px 16px rgba(0, 0, 0, .18); animation: pulse 1.2s ease-in-out infinite; }
+.round-btn.bonus[hidden] { display: none; }
+#miniGem[hidden] { display: none; }

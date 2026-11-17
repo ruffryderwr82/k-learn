@@ -585,3 +585,63 @@ export function critterFor(q) {
   const m = text.match(/[a-z]/i);
   return m ? m[0].toLowerCase() : null;
 }
+
+// ---- bonus mini-games -------------------------------------------------------
+export const MINI = [
+  { id: 'train', name: 'Letter Train', icon: '🚂' },
+  { id: 'pop', name: 'Grump Pop', icon: '🔨' },
+  { id: 'cart', name: 'Mine Cart', icon: '🛤️' },
+  { id: 'rocket', name: 'Rocket Ride', icon: '🚀' },
+];
+
+// An optional bonus game after every third regular level of each world; the four games take turns.
+export const BONUSES = (() => {
+  const out = [];
+  WORLDS.forEach((_, w) => {
+    const regular = LEVELS.map((l, i) => [l, i]).filter(([l]) => l.world === w && !l.boss).map(([, i]) => i);
+    regular.forEach((i, k) => {
+      if ((k + 1) % 3 === 0) out.push({ id: `bonus-${out.length + 1}`, after: i, world: w, game: MINI[out.length % MINI.length].id });
+    });
+  });
+  return out;
+})();
+
+// Picture words met so far (up to and including level `upTo`), newest last.
+function wordsUpTo(upTo) {
+  const out = [];
+  for (let i = 0; i <= upTo; i++) {
+    const l = LEVELS[i];
+    for (const list of [l.pool, ...Object.values(l.pools)]) {
+      for (const it of list) if (typeof it === 'string' && PICTURES[it] && !out.includes(it)) out.push(it);
+    }
+  }
+  return out;
+}
+
+const lettersUpTo = (upTo) => [...new Set(LEVELS.slice(0, upTo + 1).filter((l) => l.poolKind === 'letter').flatMap((l) => l.pool))];
+const sightUpTo = (upTo) => LEVELS.slice(0, upTo + 1).filter((l) => l.poolKind === 'sight').flatMap((l) => l.pool);
+
+/**
+ * A pretend level that makeQuestion can draw a bonus game's questions from,
+ * using only what has been taught by the time the bonus is reached.
+ */
+export function bonusLevel(bonus) {
+  const recent = wordsUpTo(bonus.after).slice(-18);
+  const sight = sightUpTo(bonus.after);
+  const letters = lettersUpTo(bonus.after);
+  const make = (types, pool, pools = {}) => ({ id: bonus.id, world: bonus.world, types, pool, pools, review: [] });
+  const early = bonus.world === 0;
+  switch (bonus.game) {
+    case 'train': // blending: short words to sound out
+      return make(['soundout'], recent.filter((w) => segment(w).length <= 4));
+    case 'rocket': // spelling: three-sound words to build
+      return make(['build'], buildable(recent).length >= 3 ? buildable(recent) : buildable(wordsUpTo(bonus.after)));
+    case 'pop':
+      return early ? make(['hearSound', 'hearSound', 'nameL'], letters)
+        : make(sight.length ? ['hear', 'hear', 'pic2word'] : ['pic2word'], recent, { hear: sight });
+    case 'cart':
+    default:
+      return early ? make(['hearSound', 'starts', 'nameU'], letters)
+        : make(sight.length ? ['word2pic', 'pic2word', 'hear'] : ['word2pic', 'pic2word'], recent, { hear: sight });
+  }
+}

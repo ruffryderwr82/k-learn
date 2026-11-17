@@ -60,6 +60,34 @@ How it keeps him learning rather than guessing:
 - **Knowing things is power.** Three first-try answers in a row trigger Super Spark: faster, coin magnet, Grumps pop on touch.
 - **Grown-ups page** (hold the button on the title screen) shows what is learned, what needs practice, and can unlock every level and power to start further along.
 
+## Rescuing the lost letters
+
+Every right answer frees a letter critter: the letter itself with eyes and feet. Freed letters follow
+Pip along his path, dance on the level-end card, and move into their own house in the **Letter
+Village** (the 🏡 button). Houses stay boarded up until their letter is rescued, and get a gold star
+once he knows that letter's sound. Tapping a letter in the village says its name and sound.
+
+## Bonus games
+
+After every third level there is an optional bonus stop on the map (12 in all, each of the four
+games comes up three times, harder each time). They practise reading with a different kind of play,
+take about a minute, and pay coins plus a gem the first time each is finished. Answers in them count
+toward mastery like any other.
+
+| Game | Skill | How it plays |
+| --- | --- | --- |
+| Letter Train | Blending | The word's sound cars roll past a bell, each saying its sound. Each pass is faster, until "m ... a ... p" runs together into "map". Then pick the picture. |
+| Grump Pop | Letter sounds, then sight words and words | Friendly Grumps pop out of holes holding signs. Tap the one that answers the question. Gold Grumps are bonus coins. |
+| Mine Cart | Letter sounds, then reading words | The track splits; tap the sign with the answer before the cart reaches the split. The wrong track is a bumpy ride. |
+| Rocket Ride | Spelling | Hear a word, then steer the rocket to catch its letters in order. |
+
+## Sound and praise
+
+Music is generated in the game: each world has its own key, tempo and groove, bosses and bonus
+games have their own, and the music dips whenever the voice speaks. Praise is varied: a random cheer,
+sometimes with his name. On the grown-ups page, under **Your voice → Cheers & his name**, you can
+record his name and up to ten cheers in your own voice, or type his name for the tablet's voice to use.
+
 ## How progress works
 
 - **Each world ends with a boss.** Right answers zap it; five hits win. The boss asks about everything the world taught.
@@ -113,7 +141,7 @@ sideloading at home but not for a store release.
 
 ```sh
 npm test                    # curriculum and level-generator checks
-npm start & node tests/playtest.mjs   # a bot plays all 141 layouts, with and without recorded sounds, to prove each can be finished (needs Playwright)
+npm start & node tests/playtest.mjs   # a bot plays all 141 layouts and all 12 bonus games, with and without recorded sounds, to prove each can be finished (needs Playwright)
 ```
 
 ## Where things are
@@ -123,7 +151,8 @@ npm start & node tests/playtest.mjs   # a bot plays all 141 layouts, with and wi
 - `js/levelgen.js` — builds each level from chunks (pits, hills, cliffs, moving platforms, secrets, answer stations, boss arenas).
 - `js/game.js` — physics, powers, enemies, bosses, answer blocks, drawing.
 - `js/hero.js` — Pip, hats, colors and pets.
-- `js/main.js` — menus, shop, sticker book, grown-ups page.
+- `js/minigames.js` — the four bonus games.
+- `js/main.js` — menus, map, shop, Letter Village, grown-ups page.
 - `js/progress.js` — saved progress, mastery tracking and the rules for what is unlocked (stored on the device).
 - `js/audio.js` — sound effects, music and the voice.
 

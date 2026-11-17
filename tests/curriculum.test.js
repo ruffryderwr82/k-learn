@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LEVELS, WORLDS, PICTURES, SIGHT_WORDS, HEART, makeQuestion, mulberry32, worldSkills } from '../js/curriculum.js';
+import { LEVELS, WORLDS, PICTURES, SIGHT_WORDS, HEART, BONUSES, MINI, bonusLevel, critterFor, makeQuestion, mulberry32, worldSkills } from '../js/curriculum.js';
 import { SOUNDS, segment } from '../js/sounds.js';
 import { isUnlocked, nextLevelIndex, worldMastery, hasPower } from '../js/progress.js';
 import { generateLevel, T, GROUND, ROWS } from '../js/levelgen.js';
@@ -153,5 +153,40 @@ test('sight words run through the whole progression', () => {
     assert.equal(own.length, 12, WORLDS[w].name);
     for (const word of own) assert.ok(worldSkills(w).includes(`x:${word}`), `${word} gates ${WORLDS[w].name}`);
     assert.deepEqual(LEVELS.find((l) => l.world === w && l.boss).pools.hear, own);
+  }
+});
+
+test('a bonus game after every third level, using only what has been taught', () => {
+  assert.equal(BONUSES.length, 12);
+  for (const w of WORLDS.keys()) assert.ok(BONUSES.filter((b) => b.world === w).length >= 2, `world ${w} has bonus games`);
+  for (const g of MINI) assert.equal(BONUSES.filter((b) => b.game === g.id).length, 3, `${g.id} comes up three times`);
+  for (const b of BONUSES) {
+    assert.ok(!LEVELS[b.after].boss && LEVELS[b.after].world === b.world, b.id);
+    const level = bonusLevel(b);
+    assert.ok(level.pool.length >= 3, `${b.id} has enough to ask`);
+    for (const has of [() => false, () => true]) {
+      const rng = mulberry32(11);
+      for (let i = 0; i < 150; i++) {
+        const q = makeQuestion(level, {}, rng, null, has);
+        assert.ok(q.choices.length >= 2 && q.answer >= 0, b.id);
+        if (b.game === 'train') { assert.ok(PICTURES[q.item], `${b.id} train word ${q.item} has a picture`); assert.ok(segment(q.item).length <= 4); }
+        if (b.game === 'rocket') assert.equal(q.sequence.length, 3, `${b.id} spells a three-sound word`);
+        // nothing a child has not been taught yet
+        if (typeof q.item === 'string' && PICTURES[q.item]) {
+          const met = LEVELS.slice(0, b.after + 1).some((l) => [l.pool, ...Object.values(l.pools)].some((list) => list.includes(q.item)));
+          assert.ok(met, `${b.id}: ${q.item} not taught yet`);
+        }
+      }
+    }
+  }
+});
+
+test('every right answer frees a letter critter', () => {
+  for (const level of LEVELS) {
+    const rng = mulberry32(5);
+    for (let i = 0; i < 60; i++) {
+      const letter = critterFor(makeQuestion(level, {}, rng, null, () => true));
+      assert.match(letter, /^[a-z]$/, level.id);
+    }
   }
 });

@@ -1,9 +1,10 @@
 // Screens, menus and wiring between the game, the curriculum and saved progress.
-import { LEVELS, WORLDS, LETTERS, PICTURES, POWERS, SIGHT_WORDS, HEART, makeQuestion, critterFor } from './curriculum.js';
+import { LEVELS, WORLDS, LETTERS, PICTURES, POWERS, SIGHT_WORDS, HEART, MINI, BONUSES, bonusLevel, makeQuestion, critterFor } from './curriculum.js';
 import { SOUNDS, segment, soundOf } from './sounds.js';
 import * as store from './progress.js';
 import * as audio from './audio.js';
 import { Game } from './game.js';
+import { Minis } from './minigames.js';
 import { drawHero, drawPet, drawCritter, critterColor, COLORS, HATS, PETS } from './hero.js';
 
 const $ = (id) => document.getElementById(id);
@@ -30,6 +31,7 @@ function show(name) {
   document.querySelectorAll('[data-coins]').forEach((e) => { e.textContent = state.coins; });
   document.querySelectorAll('[data-gems]').forEach((e) => { e.textContent = store.gemBalance(state); });
   if (name !== 'play') { game.stop(); audio.music(null); }
+  if (name !== 'mini') minis.stop();
   if (name !== 'parent') audio.closeMic();
   renderers[name]?.();
   if (name === 'title') updateNudge();
@@ -82,18 +84,93 @@ const game = new Game($('game'), {
   },
   // A miss: say what was picked (by its sound when there is one). The right answer
   // lights up on screen, and the gate then asks something new.
-  wrong: (q, choice) => {
-    if (q.sequence) return audio.play(['Not quite.', q.item]);
-    const bySound = choice.sound && audio.hasSound(choice.sound) && promptScript(q).some((part) => part.s);
-    const picked = bySound ? ['That one says', { s: choice.sound }]
-      : choice.names ? ['That one is', ...choice.names.map((name) => ({ name }))]
-        : [choice.say ? `That one is ${choice.say}.` : 'Not that one.'];
-    return audio.play(picked);
-  },
+  wrong: (q, choice) => wrongVoice(q, choice),
   died: () => audio.play('Oh no! Three misses. Back you go. You can do it!'),
   sound: (id) => audio.playSound(id),
   sfx: audio.sfx,
 });
+
+function wrongVoice(q, choice) {
+  if (q.sequence) return audio.play(['Not quite.', q.item]);
+  const bySound = choice.sound && audio.hasSound(choice.sound) && promptScript(q).some((part) => part.s);
+  const picked = bySound ? ['That one says', { s: choice.sound }]
+    : choice.names ? ['That one is', ...choice.names.map((name) => ({ name }))]
+      : [choice.say ? `That one is ${choice.say}.` : 'Not that one.'];
+  return audio.play(picked);
+}
+
+// ---- bonus mini-games -------------------------------------------------------
+let currentBonus = 0;
+let bonusPool = null;
+const minis = new Minis($('miniCanvas'), {
+  question: (avoid) => makeQuestion(bonusPool, state.mastery, Math.random, avoid, audio.hasSound),
+  onAnswer: (q, right) => { store.recordAnswer(state, q.key, right); store.save(state); },
+  ask: (q) => audio.play(promptScript(q)),
+  say: (script) => audio.play(script),
+  praise: (q) => {
+    let detail = q.praiseAudio || [q.praise];
+    if (detail[0] === 'Yes!') detail = detail.slice(1);
+    return audio.play([...cheer(), { pause: 100 }, ...detail]);
+  },
+  wrong: (q, choice) => wrongVoice(q, choice),
+  sound: (id) => audio.playSound(id),
+  hasSound: audio.hasSound,
+  sfx: audio.sfx,
+  onHud: (h) => {
+    const el = $('miniCoins');
+    if (Number(el.textContent) < h.coins) { el.parentElement.classList.remove('pop'); void el.offsetWidth; el.parentElement.classList.add('pop'); }
+    el.textContent = h.coins;
+  },
+  onComplete: finishBonus,
+});
+
+function startBonus(i) {
+  currentBonus = i;
+  const b = BONUSES[i];
+  bonusPool = bonusLevel(b);
+  show('mini');
+  $('miniDone').hidden = true;
+  $('miniCoins').textContent = '0';
+  minis.look = { color: COLORS[state.color].hex, hat: state.hat };
+  minis.start(b.game, b.world);
+  minis.run();
+  audio.music(b.world, 'mini');
+}
+
+function finishBonus(r) {
+  const b = BONUSES[currentBonus];
+  const stars = r.firstTry >= r.total - 1 ? 3 : r.firstTry >= r.total / 2 ? 2 : 1;
+  state.bonus = state.bonus || {};
+  const first = !state.bonus[b.id];
+  state.bonus[b.id] = Math.max(state.bonus[b.id] || 0, stars);
+  state.coins += r.coins;
+  if (first) state.bonusGems = (state.bonusGems || 0) + 1; // the first finish of each bonus game pays a gem
+  store.save(state);
+  minis.stop();
+  audio.music(null);
+  $('miniName').textContent = MINI.find((g) => g.id === b.game).name;
+  $('miniDoneCoins').textContent = r.coins;
+  $('miniGem').hidden = !first;
+  const starEls = [...$('miniStars').children];
+  starEls.forEach((el) => el.classList.remove('on'));
+  $('miniDone').hidden = false;
+  setTimeout(() => starEls.forEach((el, k) => el.classList.toggle('on', k < stars)), 150);
+  say([...cheer(true), `You got ${r.coins} coins.`, first ? 'And a gem!' : '']);
+}
+
+const nextAfterBonus = () => {
+  const next = BONUSES[currentBonus].after + 1;
+  return next < LEVELS.length && store.isUnlocked(state, next) ? next : store.nextLevelIndex(state);
+};
+$('btnMiniNext').onclick = () => { audio.sfx('tap'); startLevel(nextAfterBonus()); };
+$('btnMiniAgain').onclick = () => { audio.sfx('tap'); startBonus(currentBonus); };
+$('btnMiniMap').onclick = () => { audio.hush(); mapWorld = BONUSES[currentBonus].world; show('map'); };
+$('btnMiniQuit').onclick = () => { audio.hush(); mapWorld = BONUSES[currentBonus].world; show('map'); };
+$('btnBonus').onclick = () => {
+  audio.sfx('tap');
+  const i = BONUSES.findIndex((b) => b.after === current);
+  if (i >= 0) startBonus(i);
+};
 
 function applyLook() {
   game.look = { color: COLORS[state.color].hex, hat: state.hat };
@@ -188,6 +265,10 @@ function finishLevel(r) {
   $('done').hidden = false;
   setTimeout(() => starEls.forEach((el, i) => el.classList.toggle('on', i < stars)), 150);
   audio.music(null);
+  const bonusAfter = BONUSES.find((b) => b.after === current);
+  $('btnBonus').hidden = !bonusAfter;
+  if (bonusAfter) $('btnBonus').textContent = MINI.find((g) => g.id === bonusAfter.game).icon;
+  const bonusNews = bonusAfter && !(state.bonus || {})[bonusAfter.id] ? ['A bonus game is open!'] : [];
   $('donePower').hidden = !power;
   if (power) {
     $('donePowerIcon').textContent = power.icon;
@@ -196,7 +277,7 @@ function finishLevel(r) {
     say(power.say);
   } else {
     const freed = doneCritters.length;
-    say([...cheer(true), freed ? `You freed ${freed} letter${freed > 1 ? 's' : ''}! They are going home to the village.` : `You got ${r.coins} coins.`]);
+    say([...cheer(true), freed ? `You freed ${freed} letter${freed > 1 ? 's' : ''}! They are going home to the village.` : `You got ${r.coins} coins.`, ...bonusNews]);
   }
 }
 
@@ -233,8 +314,14 @@ function pause(on) {
 }
 $('btnPause').onclick = () => pause(true);
 $('btnResume').onclick = () => pause(false);
-document.addEventListener('visibilitychange', () => { if (document.hidden) pause(true); });
-window.addEventListener('resize', () => { game.lv && game.resize(); if (!game.running && game.lv) game.render(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { pause(true); minis.stop(); } else if (screen === 'mini' && $('miniDone').hidden) minis.run();
+});
+window.addEventListener('resize', () => {
+  if (game.lv) game.resize();
+  if (!game.running && game.lv) game.render();
+  if (screen === 'mini' && minis.kind) minis.resize();
+});
 
 // ---- controls -------------------------------------------------------------
 function hold(btn, key) {
@@ -255,12 +342,22 @@ hold($('btnDash'), 'dash');
 
 const KEYS = { ArrowLeft: 'left', a: 'left', ArrowRight: 'right', d: 'right', ArrowUp: 'jump', w: 'jump', ' ': 'jump', Shift: 'dash', x: 'dash' };
 window.addEventListener('keydown', (e) => {
+  if (screen === 'mini') {
+    if (e.key === 'ArrowLeft') minis.keys.left = true;
+    if (e.key === 'ArrowRight') minis.keys.right = true;
+    return;
+  }
   if (screen !== 'play') return;
   if (e.key === 'Escape') pause($('pause').hidden);
   const k = KEYS[e.key];
   if (k) { game.input[k] = true; e.preventDefault(); }
 });
-window.addEventListener('keyup', (e) => { const k = KEYS[e.key]; if (k) game.input[k] = false; });
+window.addEventListener('keyup', (e) => {
+  const k = KEYS[e.key];
+  if (k) game.input[k] = false;
+  if (e.key === 'ArrowLeft') minis.keys.left = false;
+  if (e.key === 'ArrowRight') minis.keys.right = false;
+});
 // Stop iOS from zooming or scrolling the page on double taps and drags.
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('dblclick', (e) => e.preventDefault());
@@ -364,6 +461,24 @@ function renderMap() {
       startLevel(i);
     };
     nodes.append(b);
+    const bi = BONUSES.findIndex((x) => x.after === i);
+    if (bi >= 0) {
+      const bonus = BONUSES[bi];
+      const game = MINI.find((g) => g.id === bonus.game);
+      const ready = !!state.done[level.id] || state.unlockAll;
+      const bb = document.createElement('button');
+      bb.className = `node bonus ${ready ? '' : 'locked'}`;
+      bb.setAttribute('aria-label', game.name);
+      bb.innerHTML = `<b>${ready ? game.icon : '🔒'}</b><small></small><span class="s">${'⭐'.repeat((state.bonus || {})[bonus.id] || 0)}</span>`;
+      bb.querySelector('small').textContent = game.name;
+      bb.onclick = () => {
+        audio.unlock();
+        if (!ready) { audio.sfx('wrong'); say('Finish the level before it to play this bonus game.'); return; }
+        audio.sfx('tap');
+        startBonus(bi);
+      };
+      nodes.append(bb);
+    }
   });
 }
 
@@ -764,4 +879,4 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !wind
 }
 
 // Handles for automated play-testing.
-window.__k = { game, startLevel, LEVELS, audio, get state() { return state; } };
+window.__k = { game, minis, startLevel, startBonus, LEVELS, BONUSES, audio, get state() { return state; } };
