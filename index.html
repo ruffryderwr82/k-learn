@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Pip and the Lost Letters</title>
+<meta name="description" content="A platformer that teaches letters, sounds and reading.">
+<meta name="theme-color" content="#63c7ff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pip">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-180.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Title -->
+  <section id="title" class="screen show">
+    <h1 class="logo"><span>Pip</span> <small>and the</small> <span>Lost Letters</span></h1>
+    <canvas id="titleHero" width="260" height="260" aria-hidden="true"></canvas>
+    <button id="btnPlay" class="big-btn" aria-label="Play">▶</button>
+    <nav class="row">
+      <button class="round-btn" data-go="map" aria-label="Map">🗺️</button>
+      <button class="round-btn" data-go="shop" aria-label="Dress up Pip">🎩</button>
+      <button class="round-btn" data-go="album" aria-label="Letter Village">🏡</button>
+    </nav>
+    <button id="btnParent" class="parent-btn">Grown-ups: hold here</button>
+  </section>
+
+  <!-- Map -->
+  <section id="map" class="screen">
+    <header class="bar">
+      <button class="round-btn small" data-go="title" aria-label="Back">◀</button>
+      <div id="worldTabs" class="tabs"></div>
+      <div class="wallet"><span class="coin"></span><b data-coins>0</b></div>
+    </header>
+    <h2 id="worldName"></h2>
+    <button id="gate" class="gate" aria-label="Boss door"><span>📒</span><div><i id="gateFill"></i></div><b id="gateText"></b><span id="gateIcon">👑</span></button>
+    <div id="levelNodes" class="nodes"></div>
+  </section>
+
+  <!-- Play -->
+  <section id="play" class="screen">
+    <canvas id="game"></canvas>
+    <div class="hud">
+      <button id="btnPause" class="round-btn small" aria-label="Pause"><span class="pause-icon"></span></button>
+      <div class="wallet"><span class="coin"></span><b id="hudCoins">0</b></div>
+      <div id="hudGems" class="gems" aria-label="Gems found"><i></i><i></i><i></i></div>
+      <div id="hudStreak" class="streak" aria-label="Streak"><i></i><i></i><i></i></div>
+      <div id="hudLives" class="lives" aria-label="Tries left"><i>❤</i><i>❤</i><i>❤</i></div>
+    </div>
+    <button id="prompt" class="prompt" hidden aria-label="Hear it again">
+      <span class="ear">🔊</span><span id="promptShow"></span>
+    </button>
+    <div class="pad left">
+      <button id="btnLeft" class="pad-btn" aria-label="Left">◀</button>
+      <button id="btnRight" class="pad-btn" aria-label="Right">▶</button>
+    </div>
+    <div class="pad right">
+      <button id="btnDash" class="pad-btn dash" aria-label="Dash" hidden>💨</button>
+      <button id="btnJump" class="pad-btn jump" aria-label="Jump">⬆</button>
+    </div>
+    <div class="rotate-hint">↻ Turn sideways for a bigger view</div>
+
+    <div id="pause" class="overlay" hidden>
+      <div class="card">
+        <button id="btnResume" class="big-btn" aria-label="Keep playing">▶</button>
+        <div class="row">
+          <button id="btnRestart" class="round-btn" aria-label="Start over">🔁</button>
+          <button id="btnQuit" class="round-btn" aria-label="Map">🗺️</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="done" class="overlay" hidden>
+      <div class="card">
+        <div id="doneStars" class="stars"><i>⭐</i><i>⭐</i><i>⭐</i></div>
+        <canvas id="doneCritters" width="460" height="120" hidden></canvas>
+        <div id="donePower" class="power" hidden><span id="donePowerIcon"></span><b id="donePowerName"></b></div>
+        <div class="row tally">
+          <div class="wallet"><span class="coin"></span><b id="doneCoins">0</b></div>
+          <div id="doneGems" class="gems"><i></i><i></i><i></i></div>
+        </div>
+        <button id="btnNext" class="big-btn" aria-label="Next level">▶</button>
+        <div class="row">
+          <button id="btnAgain" class="round-btn" aria-label="Play again">🔁</button>
+          <button id="btnDoneMap" class="round-btn" aria-label="Map">🗺️</button>
+          <button id="btnBonus" class="round-btn bonus" aria-label="Bonus game" hidden>🎮</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bonus mini-games -->
+  <section id="mini" class="screen">
+    <canvas id="miniCanvas"></canvas>
+    <div class="hud">
+      <button id="btnMiniQuit" class="round-btn small" aria-label="Back to the map">◀</button>
+      <div class="wallet"><span class="coin"></span><b id="miniCoins">0</b></div>
+    </div>
+    <div id="miniDone" class="overlay" hidden>
+      <div class="card">
+        <div id="miniName" class="mini-name"></div>
+        <div id="miniStars" class="stars"><i>⭐</i><i>⭐</i><i>⭐</i></div>
+        <div class="row tally">
+          <div class="wallet"><span class="coin"></span><b id="miniDoneCoins">0</b></div>
+          <div id="miniGem" class="wallet" hidden>💎 +1</div>
+        </div>
+        <button id="btnMiniNext" class="big-btn" aria-label="Next level">▶</button>
+        <div class="row">
+          <button id="btnMiniAgain" class="round-btn" aria-label="Play again">🔁</button>
+          <button id="btnMiniMap" class="round-btn" aria-label="Map">🗺️</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Shop -->
+  <section id="shop" class="screen">
+    <header class="bar">
+      <button class="round-btn small" data-go="title" aria-label="Back">◀</button>
+      <h2>Dress up Pip</h2>
+      <div class="row wallets"><div class="wallet"><span class="coin"></span><b data-coins>0</b></div><div class="wallet">💎 <b data-gems>0</b></div></div>
+    </header>
+    <div class="shop-body">
+      <canvas id="shopHero" width="300" height="280" aria-hidden="true"></canvas>
+      <div class="shop-lists">
+        <div id="shopColors" class="shop-grid"></div>
+        <div id="shopHats" class="shop-grid"></div>
+        <div id="shopPets" class="shop-grid"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Sticker book -->
+  <section id="album" class="screen">
+    <header class="bar">
+      <button class="round-btn small" data-go="title" aria-label="Back">◀</button>
+      <h2>Letter Village</h2>
+      <div class="wallet">💎 <b data-gems>0</b></div>
+    </header>
+    <div class="scroll">
+      <div class="village-wrap"><canvas id="village" aria-label="Letter Village: tap a letter"></canvas><p id="villageCount"></p></div>
+      <h3 class="shelf">Words you can read</h3>
+      <div id="albumWords" class="stickers words"></div>
+    </div>
+  </section>
+
+  <!-- Grown-ups -->
+  <section id="parent" class="screen">
+    <header class="bar">
+      <button class="round-btn small" data-go="title" aria-label="Back">◀</button>
+      <h2>For grown-ups</h2>
+      <span></span>
+    </header>
+    <div class="scroll parent-body" id="parentBody"></div>
+  </section>
+
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
