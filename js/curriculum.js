@@ -83,19 +83,31 @@ const DECOYS = (
   'beet tray trail boot seat seal soak loaf main mean feel shop stir cart cord bark hose burn'
 ).split(' ');
 
-// For irregular words: which letters do not say what the child expects (taught "by heart").
-export const HEART = {
-  the: [2], a: [0], I: [0], is: [1], to: [1], you: [1, 2], he: [1], she: [2], we: [1], my: [1],
-  go: [1], said: [1, 2], was: [1, 2], are: [0, 1, 2], have: [3], they: [2, 3], what: [1, 2], here: [2, 3], come: [1, 3],
-  like: [3], look: [], and: [], see: [], with: [],
-};
-
+// Sight words (high-frequency words), in the order they are taught: eight sets of six,
+// two per world from Sound Canyon on. They start as soon as blending does.
 const SIGHT_SETS = [
-  ['the', 'a', 'I', 'is', 'to', 'and'],
-  ['you', 'he', 'she', 'we', 'my', 'see'],
-  ['like', 'go', 'said', 'was', 'are', 'look'],
-  ['have', 'they', 'with', 'what', 'here', 'come'],
+  ['I', 'a', 'the', 'is', 'to', 'and'],
+  ['it', 'in', 'at', 'on', 'can', 'not'],
+  ['he', 'she', 'we', 'me', 'be', 'my'],
+  ['you', 'see', 'go', 'no', 'so', 'do'],
+  ['like', 'said', 'was', 'are', 'look', 'have'],
+  ['they', 'with', 'what', 'here', 'come', 'of'],
+  ['for', 'her', 'all', 'one', 'two', 'out'],
+  ['there', 'were', 'some', 'when', 'your', 'want'],
 ];
+
+// Which letters of a sight word do not say what the child expects. Those are learned
+// "by heart" and shown in red; the rest of the word is still sounded out. Words missing
+// here (it, in, can, and ...) are fully decodable and get no red letters.
+export const HEART = {
+  I: [0], a: [0], the: [2], is: [1], to: [1],
+  he: [1], she: [2], we: [1], me: [1], be: [1], my: [1],
+  you: [1, 2], go: [1], no: [1], so: [1], do: [1],
+  like: [3], said: [1, 2], was: [1, 2], are: [0, 1, 2], have: [3],
+  they: [2, 3], what: [1, 2], here: [2, 3], come: [1, 3], of: [0, 1],
+  all: [0], one: [0, 1, 2], two: [1, 2], out: [0, 1],
+  there: [2, 3, 4], were: [1, 2, 3], some: [1, 3], your: [1, 2, 3], want: [1],
+};
 
 // Read the sentence, pick the picture.
 const SENTENCE_PICS = [
@@ -125,12 +137,14 @@ const SENTENCE_YN = [
   ['You can eat a rock.', false], ['A horse can run fast.', true], ['Corn is a snack.', true],
 ];
 
+export const SIGHT_WORDS = SIGHT_SETS.flat();
+
 export const WORLDS = [
   { id: 'meadow', name: 'Letter Meadow', icon: '🌼', goal: 'The sound each letter makes' },
-  { id: 'canyon', name: 'Sound Canyon', icon: '🌵', goal: 'Hearing sounds in words and blending them' },
-  { id: 'woods', name: 'Word Woods', icon: '🍄', goal: 'Sounding out and spelling short words' },
-  { id: 'sky', name: 'Sky Islands', icon: '☁️', goal: 'sh ch th ck ng, blends, tricky words' },
-  { id: 'summit', name: 'Story Summit', icon: '❄️', goal: 'First grade: long vowels and sentences' },
+  { id: 'canyon', name: 'Sound Canyon', icon: '🌵', goal: 'Hearing sounds in words, blending, first sight words' },
+  { id: 'woods', name: 'Word Woods', icon: '🍄', goal: 'Sounding out and spelling short words, more sight words' },
+  { id: 'sky', name: 'Sky Islands', icon: '☁️', goal: 'sh ch th ck ng, blends, sight words' },
+  { id: 'summit', name: 'Story Summit', icon: '❄️', goal: 'First grade: long vowels, sight words, sentences' },
 ];
 
 const words = (s) => s.split(' ');
@@ -180,25 +194,28 @@ function buildLevels() {
   add(1, 'middle sound', ['midSound', 'lastSound'], [...CVC.u, ...CVC.e], { poolKind: 'word' });
   add(1, 'blend it', ['blend'], [...CVC.a, ...CVC.i], { poolKind: 'blend' });
   add(1, 'blend more', ['blend'], [...CVC.o, ...CVC.u, ...CVC.e], { poolKind: 'blend' });
+  add(1, SIGHT_SETS[0].slice(0, 3).join(', ') + '...', ['hear'], SIGHT_SETS[0], { poolKind: 'sight' });
   add(1, 'sound buttons', ['soundout', 'blend'], [...CVC.a, ...CVC.i], { poolKind: 'blend' });
   add(1, 'more buttons', ['soundout', 'soundout', 'blend'], [...CVC.o, ...CVC.u, ...CVC.e], { poolKind: 'blend' });
+  add(1, SIGHT_SETS[1].slice(0, 3).join(', ') + '...', ['hear'], SIGHT_SETS[1], { poolKind: 'sight' });
   add(1, 'build a word', ['build', 'soundout'], buildable([...CVC.a, ...CVC.i, ...CVC.o]), { poolKind: 'spell' });
   boss(1, ['soundout', 'blend'], 'blend');
 
   // World 3: read and spell short-vowel words without help, one vowel at a time.
   for (const [v, pool] of Object.entries(CVC)) {
     add(2, `short ${v}`, ['word2pic', 'pic2word', 'build'], pool, { poolKind: 'word', pools: { build: buildable(pool) } });
+    if (v === 'i') add(2, SIGHT_SETS[2].slice(0, 3).join(', ') + '...', ['hear'], SIGHT_SETS[2], { poolKind: 'sight' });
   }
-  add(2, 'the, a, I...', ['hear'], SIGHT_SETS[0], { poolKind: 'sight' });
+  add(2, SIGHT_SETS[3].slice(0, 3).join(', ') + '...', ['hear'], SIGHT_SETS[3], { poolKind: 'sight' });
   add(2, 'mix it up', ['word2pic', 'word2pic', 'pic2word', 'build'], ALL_CVC, { poolKind: 'word', pools: { build: buildable(ALL_CVC) } });
   boss(2, ['word2pic', 'pic2word'], 'word');
 
   // World 4: two letters, one sound. The new sound is taught first, then read in words.
   add(3, 'sh ch th', ['word2pic', 'hearSound', 'pic2word'], words('ship fish shell chick bath'), { poolKind: 'word', pools: { hearSound: ['sh', 'ch', 'th'] } });
-  add(3, 'you, he, she...', ['hear'], SIGHT_SETS[1], { poolKind: 'sight' });
+  add(3, SIGHT_SETS[4].slice(0, 3).join(', ') + '...', ['hear'], SIGHT_SETS[4], { poolKind: 'sight' });
   add(3, 'ck ng', ['word2pic', 'hearSound', 'pic2word'], words('duck sock lock king ring'), { poolKind: 'word', pools: { hearSound: ['ck', 'ng'] } });
   add(3, 'blends', ['word2pic', 'pic2word'], words('frog crab drum flag sled swim'), { poolKind: 'word' });
-  add(3, 'like, go, said...', ['hear'], SIGHT_SETS[2], { poolKind: 'sight' });
+  add(3, SIGHT_SETS[5].slice(0, 3).join(', ') + '...', ['hear'], SIGHT_SETS[5], { poolKind: 'sight' });
   add(3, 'more blends', ['word2pic', 'pic2word'], words('clap stop hand milk tent gift'), { poolKind: 'word' });
   add(3, 'silly or true?', ['yesno'], SENTENCE_YN.slice(0, 9).map((_, i) => i), { poolKind: 'yn' });
   boss(3, ['word2pic', 'pic2word'], 'word', { hearSound: ['sh', 'ch', 'th', 'ck', 'ng'] });
@@ -206,13 +223,28 @@ function buildLevels() {
   // World 5: first grade.
   add(4, 'magic e', ['word2pic', 'pic2word'], words('cake bike kite bone rose nose'), { poolKind: 'word' });
   add(4, 'more magic e', ['word2pic', 'pic2word'], words('snake whale five nine home cone'), { poolKind: 'word' });
-  add(4, 'have, they, with...', ['hear'], SIGHT_SETS[3], { poolKind: 'sight' });
+  add(4, SIGHT_SETS[6].slice(0, 3).join(', ') + '...', ['hear'], SIGHT_SETS[6], { poolKind: 'sight' });
   add(4, 'ee ai', ['word2pic', 'hearSound', 'pic2word'], words('bee tree feet sheep rain snail train'), { poolKind: 'word', pools: { hearSound: ['ee', 'ai'] } });
+  add(4, SIGHT_SETS[7].slice(0, 3).join(', ') + '...', ['hear'], SIGHT_SETS[7], { poolKind: 'sight' });
   add(4, 'oa ea oo', ['word2pic', 'hearSound', 'pic2word'], words('boat goat soap leaf moon spoon book'), { poolKind: 'word', pools: { hearSound: ['oa', 'oo'] } });
   add(4, 'ar or ir', ['word2pic', 'hearSound', 'pic2word'], words('star car corn fork bird shark horse'), { poolKind: 'word', pools: { hearSound: ['ar', 'or', 'ir'] } });
   add(4, 'read and find', ['sentpic'], SENTENCE_PICS.map((_, i) => i), { poolKind: 'sp' });
   add(4, 'story time', ['sentpic', 'yesno2'], SENTENCE_PICS.map((_, i) => i), { poolKind: 'sp' });
   boss(4, ['word2pic', 'pic2word'], 'word');
+
+  // Sight words need far more repetition than one level gives, so once a set has been
+  // taught it keeps coming back: every later level mixes in the sight words learned so
+  // far, and each boss asks the ones from its own world.
+  const learned = [];
+  for (const l of L) {
+    if (l.poolKind === 'sight') { learned.push(...l.pool); continue; }
+    const pool = l.boss ? L.filter((x) => x.world === l.world && x.poolKind === 'sight').flatMap((x) => x.pool) : [...learned];
+    if (!pool.length) continue;
+    // about one question in five, whatever else the level asks
+    const copies = Math.ceil(4 / l.types.length);
+    l.types = [...Array.from({ length: copies }, () => l.types).flat(), 'hear'];
+    l.pools = { ...l.pools, hear: pool };
+  }
   return L;
 }
 
@@ -262,12 +294,13 @@ const KEY_PREFIX = {
 export const skillKey = (type, item) => `${KEY_PREFIX[type]}:${item}`;
 
 // The things a world must have mastered before its boss door opens: whatever the boss
-// itself asks about (letter sounds, then blending, then reading words).
+// itself asks about (letter sounds, then blending, then reading words) plus the sight
+// words taught in that world.
 export function worldSkills(world) {
   const boss = LEVELS.find((l) => l.world === world && l.boss);
   const keys = new Set();
   for (const l of LEVELS) {
-    if (l.world !== world || l.boss || l.poolKind !== boss.poolKind) continue;
+    if (l.world !== world || l.boss || (l.poolKind !== boss.poolKind && l.poolKind !== 'sight')) continue;
     for (const item of l.pool) keys.add(skillKey(l.types[0], item));
   }
   return [...keys];
@@ -509,9 +542,9 @@ export function makeQuestion(level, mastery = {}, rng = Math.random, avoid = nul
       };
     }
     case 'hear': {
-      // Tricky words: the letters that do not say what they should are marked with a heart.
+      // Sight words: hear it, find it among look-alikes. Letters that break the rules are red.
       const all = SIGHT_SETS.flat().filter((w) => w.toLowerCase() !== item.toLowerCase());
-      const near = shuffle(all.filter((w) => w[0].toLowerCase() === item[0].toLowerCase() || w.length === item.length), rng);
+      const near = shuffle(all.filter((w) => w[0].toLowerCase() === item[0].toLowerCase() || (w.length === item.length && w.slice(-1) === item.slice(-1))), rng);
       const wrongs = [...near, ...shuffle(all, rng)].filter((w, i, a) => a.indexOf(w) === i).slice(0, 2);
       const heart = HEART[item] || [];
       const tricky = heart.length && heart.length < item.length ? ` The tricky part is ${heart.map((i) => LETTERS[item[i].toLowerCase()].name).join(' ')}.` : '';

@@ -1,5 +1,5 @@
 // Screens, menus and wiring between the game, the curriculum and saved progress.
-import { LEVELS, WORLDS, LETTERS, PICTURES, POWERS, makeQuestion } from './curriculum.js';
+import { LEVELS, WORLDS, LETTERS, PICTURES, POWERS, SIGHT_WORDS, HEART, makeQuestion } from './curriculum.js';
 import { SOUNDS, segment, soundOf } from './sounds.js';
 import * as store from './progress.js';
 import * as audio from './audio.js';
@@ -395,6 +395,16 @@ function renderAlbum() {
   }
   const wordsEl = $('albumWords');
   wordsEl.innerHTML = '';
+  // sight words: every one has a place waiting, so he can see what is left to win
+  for (const w of SIGHT_WORDS) {
+    const got = box(`x:${w}`) >= store.MASTERED;
+    const b = document.createElement('button');
+    b.className = `sticker sight ${got ? 'got' : ''}`;
+    const heart = HEART[w] || [];
+    b.innerHTML = `<span>${[...w].map((ch, i) => (got && heart.includes(i) ? `<i>${ch}</i>` : ch)).join('')}</span>`;
+    b.onclick = () => { audio.unlock(); say(w); };
+    wordsEl.append(b);
+  }
   for (const [w, emoji] of Object.entries(PICTURES)) {
     if (box(`w:${w}`) < store.MASTERED) continue;
     const b = document.createElement('button');
@@ -423,7 +433,8 @@ function renderParent() {
     <section id="studio"></section>
     <section>
       <h3>How it teaches</h3>
-      <p>The game follows systematic phonics, the sounding-out method: first the <b>sound</b> each letter makes, a few letters at a time; then <b>blending</b> sounds into words (s-a-t, sat) and <b>hearing</b> the sounds inside words; then reading and <b>spelling</b> words made only of sounds already taught. The few irregular words are sounded out as far as they go, with the tricky letters shown in red.</p>
+      <p>The game follows systematic phonics, the sounding-out method: first the <b>sound</b> each letter makes, a few letters at a time; then <b>blending</b> sounds into words (s-a-t, sat) and <b>hearing</b> the sounds inside words; then reading and <b>spelling</b> words made only of sounds already taught. </p>
+      <p><b>Sight words</b> (the, said, was ...) start as soon as he can blend: six new ones at a time, two sets per world, 48 in all. Once taught they keep coming back in every later level. Letters that break the rules are shown in red; the rest of the word is still sounded out.</p>
       <p>On any printed word he can tap the word to hear its sounds one by one. It never says the whole word for him.</p>
     </section>
     <section>
@@ -433,7 +444,7 @@ function renderParent() {
       ${meter('Blending', count('b:'), 38)}
       ${meter('Spelling', count('e:'), spellTotal)}
       ${meter('Words read alone', count('w:'), wordTotal)}
-      ${meter('Tricky words', count('x:'), sightTotal)}
+      ${meter('Sight words', count('x:'), sightTotal)}
       <p>Something counts as learned after three right answers on the first try. A miss moves it back a step, and the game asks about weaker items more often.</p>
     </section>
     <section>
@@ -446,7 +457,7 @@ function renderParent() {
         const g = store.worldMastery(state, i);
         return meter(`${w.icon} ${w.name}`, g.have, g.total);
       }).join('')}
-      <p>Each world ends with a boss. Its door opens once 80% of that world's letters or words are learned, so he replays levels (each has three layouts) until they stick. Beating the boss opens the next world and wins a new power: double jump, dash, coin magnet, bubble shield.</p>
+      <p>Each world ends with a boss. Its door opens once 80% of that world's sounds or words, including its sight words, are learned, so he replays levels (each has three layouts) until they stick. Beating the boss opens the next world and wins a new power: double jump, dash, coin magnet, bubble shield.</p>
       <label><input type="checkbox" id="optUnlock" ${state.unlockAll ? 'checked' : ''}> Unlock every level and power (to start further along)</label>
     </section>
     <section>

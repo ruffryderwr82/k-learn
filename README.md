@@ -21,15 +21,18 @@ literacy programs:
    that share one, like sh). Tapping the word plays its sounds one by one. It never says the whole
    word for him: the blending is his job.
 5. **Spell by sound.** Hear a word and bump its letters in order.
-6. **Tricky words by heart.** Irregular words (the, said, was) show the letters that break the rules in red.
+6. **Sight words alongside.** 48 high-frequency words (I, a, the ... there, were, want) are taught
+   six at a time, two sets per world, starting as soon as he can blend. Once taught they come back
+   in about one question in five of every later level. Letters that break the rules are shown in
+   red; the rest of the word is still sounded out.
 
 | World | Focus | Example question |
 | --- | --- | --- |
 | Letter Meadow | The sound of each letter; first blending | "Which one says mmm?" |
-| Sound Canyon | Hearing sounds in words, blending, sound buttons, first spelling | "c ... a ... t. What word is it?" |
-| Word Woods | Reading and spelling short-vowel words unaided; first tricky words | Read **pot**, find the picture |
-| Sky Islands | sh ch th ck ng taught as sounds, then blends; more tricky words | "Which one says shhh?" then read **ship** |
-| Story Summit (1st grade) | Magic e, vowel teams, r-controlled vowels, sentences | Read a sentence, pick the picture |
+| Sound Canyon | Hearing sounds in words, blending, sound buttons, first spelling, first 12 sight words | "c ... a ... t. What word is it?" |
+| Word Woods | Reading and spelling short-vowel words unaided; 12 more sight words | Read **pot**, find the picture |
+| Sky Islands | sh ch th ck ng taught as sounds, then blends; 12 more sight words | "Which one says shhh?" then read **ship** |
+| Story Summit (1st grade) | Magic e, vowel teams, r-controlled vowels, 12 more sight words, sentences | Read a sentence, pick the picture |
 
 ### Record the letter sounds first
 
@@ -56,7 +59,7 @@ How it keeps him learning rather than guessing:
 ## How progress works
 
 - **Each world ends with a boss.** Right answers zap it; five hits win. The boss asks about everything the world taught.
-- **The boss door opens on mastery, not completion.** 80% of what the boss asks about (letter sounds, then blending, then reading words) must be learned
+- **The boss door opens on mastery, not completion.** 80% of what the boss asks about (letter sounds, then blending, then reading words, plus that world's sight words) must be learned
   (three first-try answers each). Until then the Play button sends him to the level where he is weakest.
 - **Beating a boss opens the next world and wins a power** that works everywhere: double jump, dash,
   coin magnet, bubble shield, and finally Golden Pip.
@@ -106,7 +109,7 @@ sideloading at home but not for a store release.
 
 ```sh
 npm test                    # curriculum and level-generator checks
-npm start & node tests/playtest.mjs   # a bot plays all 129 layouts, with and without recorded sounds, to prove each can be finished (needs Playwright)
+npm start & node tests/playtest.mjs   # a bot plays all 141 layouts, with and without recorded sounds, to prove each can be finished (needs Playwright)
 ```
 
 ## Where things are

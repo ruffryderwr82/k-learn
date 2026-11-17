@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LEVELS, WORLDS, PICTURES, makeQuestion, mulberry32, worldSkills } from '../js/curriculum.js';
+import { LEVELS, WORLDS, PICTURES, SIGHT_WORDS, HEART, makeQuestion, mulberry32, worldSkills } from '../js/curriculum.js';
 import { SOUNDS, segment } from '../js/sounds.js';
 import { isUnlocked, nextLevelIndex, worldMastery, hasPower } from '../js/progress.js';
 import { generateLevel, T, GROUND, ROWS } from '../js/levelgen.js';
@@ -126,4 +126,32 @@ test('worlds are gated by mastery and bosses grant powers', () => {
   assert.equal(isUnlocked(state, bossIndex + 1), true);
   assert.equal(hasPower(state, 'double'), true);
   assert.equal(hasPower(state, 'dash'), false);
+});
+
+test('sight words run through the whole progression', () => {
+  assert.equal(new Set(SIGHT_WORDS).size, SIGHT_WORDS.length, 'no sight word is taught twice');
+  for (const [w, idx] of Object.entries(HEART)) {
+    assert.ok(SIGHT_WORDS.includes(w), `${w} is marked tricky but never taught`);
+    for (const i of idx) assert.ok(i < w.length, w);
+  }
+  const taught = [];
+  for (const level of LEVELS) {
+    if (level.poolKind === 'sight') { taught.push(...level.pool); continue; }
+    if (level.world === 0) { assert.ok(!level.types.includes('hear'), 'none before he can blend'); continue; }
+    if (level.boss) continue;
+    // every later level reviews exactly the sight words taught so far, as a minority of questions
+    if (taught.length) {
+      assert.deepEqual(level.pools.hear, taught, level.id);
+      const share = level.types.filter((t) => t === 'hear').length / level.types.length;
+      assert.ok(share > 0 && share <= 0.25, `${level.id} sight share ${share}`);
+    }
+  }
+  assert.deepEqual(taught, SIGHT_WORDS, 'every set is taught, in order');
+  // worlds 2 to 5 each teach two sets, need them for the boss door, and the boss asks them
+  for (let w = 1; w < WORLDS.length; w++) {
+    const own = LEVELS.filter((l) => l.world === w && l.poolKind === 'sight').flatMap((l) => l.pool);
+    assert.equal(own.length, 12, WORLDS[w].name);
+    for (const word of own) assert.ok(worldSkills(w).includes(`x:${word}`), `${word} gates ${WORLDS[w].name}`);
+    assert.deepEqual(LEVELS.find((l) => l.world === w && l.boss).pools.hear, own);
+  }
 });
