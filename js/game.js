@@ -1,6 +1,6 @@
 // The platformer: physics, answer blocks, enemies, collectibles and drawing.
 import { generateLevel, TILE, ROWS, GROUND, T, STATION_SLOTS, BOSS_HP } from './levelgen.js';
-import { drawHero, drawPet } from './hero.js';
+import { drawHero, drawPet, drawCritter } from './hero.js';
 
 export const FONT = 'Andika, "Chalkboard SE", "Comic Sans MS", sans-serif';
 const VIEW_H = 576;
@@ -15,7 +15,7 @@ const BOSS_COLORS = ['#e0528b', '#e07a2f', '#3f9d6b', '#7b5be0', '#3d6fd6'];
 const PW = 30;
 const PH = 42;
 
-const THEMES = [
+export const THEMES = [
   { sky: ['#63c7ff', '#dff6ff'], far: '#a8e4a0', near: '#6fcf6f', grass: '#4cc24a', dirt: '#b9793f', dirt2: '#a3652f', brick: '#f2a65a', deco: ['🌼', '🌷', '🌳'], orb: '#fff6b0' },
   { sky: ['#ff9e5e', '#ffe2a8'], far: '#e8a064', near: '#d17a45', grass: '#f0c060', dirt: '#c9713d', dirt2: '#b05e2f', brick: '#e07a5f', deco: ['🌵', '🌴', '🌵'], orb: '#fff1c1' },
   { sky: ['#2d8f85', '#b8ead0'], far: '#2f7d5b', near: '#1f6648', grass: '#3fae6a', dirt: '#6b4a2f', dirt2: '#573a22', brick: '#8d6e4a', deco: ['🍄', '🌲', '🌿'], orb: '#eaffd0' },
@@ -40,7 +40,8 @@ export class Game {
   /**
    * hooks: nextQuestion(avoidItem), onAnswer(question, firstTry), onPrompt(question|null, step),
    *        ask(question), praise(question), wrong(question, choice), died(), sound(soundId),
-   *        onHud(state), onComplete(result), sfx(name)
+   *        onHud(state), onComplete(result), sfx(name),
+   *        critterFor(question) -> letter freed by a right answer, coinTarget() -> {x, y} in CSS px
    */
   constructor(canvas, hooks) {
     this.canvas = canvas;
@@ -90,6 +91,18 @@ export class Game {
     this.strikes = 0; // wrong answers in a row; three sends him back to the checkpoint
     this.checkpoint = { x: this.p.x, y: this.p.y };
     this.active = null; // the station currently asking a question
+    // game feel
+    this.freezeUntil = 0;   // hit-stop: the action pauses for a few frames on big hits
+    this.slowUntil = 0;     // slow motion (boss defeated)
+    this.shakeEnd = 0;
+    this.shakeMag = 0;
+    this.shakeDur = 1;
+    this.dustT = 0;
+    this.flyers = [];       // coins flying up to the coin counter
+    // letter critters freed by right answers follow Pip along his own path
+    this.followers = [];
+    this.trail = [];
+    this.rescued = [];
     this.hooks.onPrompt?.(null);
     this._hud();
     this.resize();
@@ -116,8 +129,33 @@ export class Game {
   }
 
   advance(dt) {
+    const now = performance.now();
+    if (now < this.freezeUntil) return;
+    if (now < this.slowUntil) dt *= 0.35;
     this.acc += dt;
     while (this.acc >= STEP) { this.step(STEP); this.acc -= STEP; }
+  }
+
+  _hitstop(ms) { this.freezeUntil = Math.max(this.freezeUntil, performance.now() + ms); }
+
+  _shake(mag, ms) {
+    const now = performance.now();
+    if (now < this.shakeEnd && this.shakeMag > mag) return;
+    this.shakeMag = mag;
+    this.shakeDur = ms;
+    this.shakeEnd = now + ms;
+  }
+
+  _slowmo(ms) { this.slowUntil = performance.now() + ms; }
+
+  // soft puffs that drift up and fade
+  _dust(x, y, n, dir = 0) {
+    for (let i = 0; i < n; i++) {
+      this.particles.push({
+        x: x + (Math.random() - 0.5) * 20, y: y - 2, vx: (Math.random() - 0.5) * 90 - dir * 60, vy: -30 - Math.random() * 50,
+        life: 0.35 + Math.random() * 0.2, color: 'rgba(255,255,255,0.75)', size: 4 + Math.random() * 4, g: -40, grow: true,
+      });
+    }
   }
 
   resize() {
@@ -166,7 +204,7 @@ export class Game {
       p.vy += GRAVITY * dt;
       p.y += p.vy * dt;
       p.spin = (this.t - this.dieT) * 10;
-      for (const q of this.particles) { q.life -= dt; q.vy += 900 * dt; q.x += q.vx * dt; q.y += q.vy * dt; }
+      for (const q of this.particles) { q.life -= dt; q.vy += (q.g ?? 900) * dt; q.x += q.vx * dt; q.y += q.vy * dt; }
       this.particles = this.particles.filter((q) => q.life > 0);
       if (this.t - this.dieT > 1.7) this._respawn();
       return;
@@ -177,7 +215,8 @@ export class Game {
       if (this.t - this.wonAt > 1.6 && !this.reported) {
         this.reported = true;
         this.hooks.onComplete?.({
-          coins: this.score.coins, right: this.score.right, firstTry: this.score.firstTry,
+          coins: this.score.coins + this.flyers.length, right: this.score.right, firstTry: this.score.firstTry,
+          rescued: this.rescued,
           gems: [0, 1, 2].map((i) => this.gems.some((g) => g.i === i && (g.got || g.old))),
         });
       }
@@ -236,6 +275,15 @@ export class Game {
 
     this._moveX(p.vx * dt);
     this._moveY(p.vy * dt);
+
+    // dust kicked up when running fast
+    if (p.grounded && Math.abs(p.vx) > 200) {
+      this.dustT -= dt;
+      if (this.dustT <= 0) { this.dustT = 0.12; this._dust(p.x + p.w / 2 - Math.sign(p.vx) * 12, p.y + p.h, 1, Math.sign(p.vx)); }
+    }
+    // the path the rescued letters walk along
+    this.trail.push({ x: p.x + p.w / 2, y: p.y + p.h, f: p.facing });
+    if (this.trail.length > 400) this.trail.shift();
 
     p.invuln -= dt;
     p.stun -= dt;
@@ -303,6 +351,8 @@ export class Game {
   }
 
   _smash(c) {
+    this._shake(8, 260);
+    this._hitstop(50);
     for (let r = 0; r < GROUND; r++) {
       if (this.tile(c, r) !== T.CRACK) continue;
       this.setTile(c, r, T.EMPTY);
@@ -313,6 +363,7 @@ export class Game {
 
   _hurt(dir) {
     const p = this.p;
+    this._shake(6, 220);
     if (p.shield) {
       // the bubble pops instead, and grows back after a while
       p.shield = false;
@@ -352,7 +403,10 @@ export class Game {
       for (let c = c0; c <= c1; c++) {
         if (this.tile(c, r)) {
           p.y = r * TILE - p.h;
-          if (!wasGrounded && p.vy > 300) p.squash = 0.3;
+          if (!wasGrounded && p.vy > 300) {
+            p.squash = 0.3;
+            this._dust(p.x + p.w / 2, p.y + p.h, Math.min(8, Math.round(p.vy / 150)));
+          }
           p.vy = 0;
           p.grounded = true;
           break;
@@ -464,6 +518,14 @@ export class Game {
       this.active = null;
       this.score.right++;
       this.strikes = 0;
+      this._hitstop(70);
+      const letter = this.hooks.critterFor?.(q);
+      if (letter) {
+        this.followers.push({ letter, x: bx, y: by, vy: -560, mode: 'pop', bornT: this.t, facing: 1 });
+        this.rescued.push(letter);
+        for (let i = 0; i < 14; i++) this._spark(bx, by, `hsl(${(letter.charCodeAt(0) * 47) % 360} 80% 65%)`, 1, 300);
+        setTimeout(() => this.hooks.sfx?.('free'), 120);
+      }
       if (s.firstTry) this.score.firstTry++;
       this.hooks.onAnswer?.(q, true);
       this.hooks.sfx?.('right');
@@ -477,6 +539,8 @@ export class Game {
         // a right answer zaps the boss
         boss.hp--;
         boss.hitT = this.t;
+        this._hitstop(130);
+        this._shake(11, 320);
         this.bolt = { x0: bx, y0: by, x1: boss.x, y1: boss.y - 50, t: this.t };
         this._burst(boss.x, boss.y - 50, '#ffe066', 24);
         this.hooks.sfx?.('bosshit');
@@ -487,6 +551,8 @@ export class Game {
       } else {
         if (boss) {
           boss.dead = this.t;
+          this._slowmo(1400);
+          this._shake(16, 700);
           for (const e of this.enemies) if (e.minion && !e.dead) e.dead = this.t;
           for (let i = 0; i < 16; i++) this.loose.push({ x: boss.x, y: boss.y - 60, vx: (i - 7.5) * 45, vy: -500 - Math.random() * 300, life: 0 });
           this._burst(boss.x, boss.y - 50, BOSS_COLORS[this.world % 5], 50);
@@ -527,6 +593,7 @@ export class Game {
     this.hooks.onAnswer?.(q, false);
     this.hooks.onPrompt?.(null);
     this.hooks.sfx?.('wrong');
+    this._shake(5, 200);
     s.state = 'swap';
     if (this.strikes >= 3) {
       s.rearmAt = Infinity; // reset when he respawns
@@ -537,6 +604,7 @@ export class Game {
       this.p.dashT = 0;
       this._burst(this.p.x + this.p.w / 2, this.p.y + this.p.h / 2, '#ffffff', 20);
       this.hooks.sfx?.('die');
+      this._shake(10, 320);
       this.hooks.died?.();
     } else {
       s.rearmAt = this.t + 2.4;
@@ -555,6 +623,8 @@ export class Game {
     // whatever gate he was at asks afresh when he gets back to it
     for (const s of this.stations) if (s.state === 'swap' || s.state === 'active') s.rearmAt = 0;
     this.cam.x = clamp(p.x - this.viewW * 0.4, 0, Math.max(0, this.lv.W * TILE - this.viewW));
+    this.trail = [];
+    for (const f of this.followers) { f.x = p.x + p.w / 2; f.y = p.y + p.h; f.mode = 'follow'; }
     this._burst(p.x + p.w / 2, p.y + p.h / 2, '#ffffff', 16);
     this._hud();
   }
@@ -576,7 +646,7 @@ export class Game {
       const d = Math.hypot(dx, dy);
       const reach = this.superT > 0 ? 170 : this.powers.magnet ? 120 : 0;
       if (d < reach && d > 1) { c.x += (dx / d) * 500 * dt; c.y += (dy / d) * 500 * dt; }
-      if (d < 34) { c.got = true; this._collect(); this.hooks.sfx?.('coin'); this._spark(c.x, c.y, '#ffe066', 4); }
+      if (d < 34) { c.got = true; this._fly(c.x, c.y); this.hooks.sfx?.('coin'); this._spark(c.x, c.y, '#ffe066', 4); }
     }
 
     for (const c of this.loose) {
@@ -584,7 +654,7 @@ export class Game {
       c.vy += GRAVITY * 0.8 * dt;
       c.x += c.vx * dt;
       c.y += c.vy * dt;
-      if (c.life > 0.55 && !c.got) { c.got = true; this._collect(); this.hooks.sfx?.('coin'); }
+      if (c.life > 0.55 && !c.got) { c.got = true; this._fly(c.x, c.y); this.hooks.sfx?.('coin'); }
     }
     this.loose = this.loose.filter((c) => !c.got);
 
@@ -646,6 +716,8 @@ export class Game {
       if (stomp || this.superT > 0 || p.dashT > 0) {
         e.dead = this.t;
         if (stomp) p.vy = -560;
+        this._hitstop(60);
+        this._shake(4, 160);
         this.hooks.sfx?.('stomp');
         this._burst(e.x, e.y - 16, '#b388ff', 12);
         for (let i = 0; i < 2; i++) this.loose.push({ x: e.x, y: e.y - 30, vx: (i - 0.5) * 120, vy: -480, life: 0 });
@@ -667,8 +739,10 @@ export class Game {
       }
     }
 
-    for (const q of this.particles) { q.life -= dt; q.vy += 900 * dt; q.x += q.vx * dt; q.y += q.vy * dt; }
+    for (const q of this.particles) { q.life -= dt; q.vy += (q.g ?? 900) * dt; q.x += q.vx * dt; q.y += q.vy * dt; }
     this.particles = this.particles.filter((q) => q.life > 0);
+    this._followers(dt);
+    this._flyers(dt);
     this.popups = this.popups.filter((q) => this.t - q.t < 1.2);
   }
 
@@ -739,7 +813,15 @@ export class Game {
     }
 
     ctx.save();
-    ctx.translate(-Math.round(cam.x * 2) / 2, -Math.round(cam.y * 2) / 2);
+    let sx = 0;
+    let sy = 0;
+    const now = performance.now();
+    if (now < this.shakeEnd) {
+      const k = (this.shakeEnd - now) / this.shakeDur;
+      sx = (Math.random() * 2 - 1) * this.shakeMag * k;
+      sy = (Math.random() * 2 - 1) * this.shakeMag * k;
+    }
+    ctx.translate(-Math.round(cam.x * 2) / 2 + sx, -Math.round(cam.y * 2) / 2 + sy);
 
     // decorations behind everything
     ctx.textAlign = 'center';
@@ -926,6 +1008,15 @@ export class Game {
 
     // hero
     const p = this.p;
+    for (const f of this.followers) {
+      const popping = f.mode === 'pop';
+      const cheer = this.state === 'won';
+      drawCritter(ctx, f.x, f.y, f.letter, t, {
+        size: popping ? Math.min(1.05, 0.4 + (t - f.bornT) * 1.8) : 1.05,
+        hop: cheer ? 22 : f.moving ? 7 : 1.5, facing: f.facing, glow: popping,
+      });
+    }
+
     if (this.state === 'dying') {
       // tumbling head over heels
       ctx.save();
@@ -954,7 +1045,7 @@ export class Game {
       ctx.globalAlpha = Math.min(1, q.life * 2);
       ctx.fillStyle = q.color;
       ctx.beginPath();
-      ctx.arc(q.x, q.y, q.size, 0, 7);
+      ctx.arc(q.x, q.y, q.grow ? q.size * (1.8 - q.life) : q.size, 0, 7);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -967,6 +1058,54 @@ export class Game {
     }
     ctx.globalAlpha = 1;
     ctx.restore();
+
+    for (const f of this.flyers) {
+      const k = Math.min(1, f.t / f.dur);
+      const e = k * k * (3 - 2 * k);
+      const x = f.x0 + (f.x1 - f.x0) * e;
+      const y = f.y0 + (f.y1 - f.y0) * e - Math.sin(k * Math.PI) * 60;
+      const r = 12 - k * 4;
+      ctx.fillStyle = '#f5b700';
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ffe066';
+      ctx.beginPath(); ctx.arc(x, y, r * 0.62, 0, 7); ctx.fill();
+    }
+  }
+
+  // A collected coin flies to the coin counter and only counts when it lands there.
+  _fly(x, y) {
+    const css = this.hooks.coinTarget?.() || { x: 100, y: 38 };
+    const k = this.viewW / (this.canvas.clientWidth || this.viewW);
+    this.flyers.push({ x0: x - this.cam.x, y0: y - this.cam.y, x1: css.x * k, y1: css.y * k, t: 0, dur: 0.45 + Math.random() * 0.1 });
+  }
+
+  _flyers(dt) {
+    let landed = 0;
+    for (const f of this.flyers) { f.t += dt; if (f.t >= f.dur) landed++; }
+    if (!landed) return;
+    this.flyers = this.flyers.filter((f) => f.t < f.dur);
+    this._collect(landed);
+  }
+
+  // Freed letters pop out of the answer, land, and then walk Pip's own path behind him.
+  _followers(dt) {
+    const gap = 18; // trail samples between one follower and the next
+    this.followers.forEach((f, i) => {
+      if (f.mode === 'pop') {
+        f.vy += GRAVITY * 0.7 * dt;
+        f.y += f.vy * dt;
+        if (this.t - f.bornT > 0.7) f.mode = 'follow';
+        return;
+      }
+      const spot = this.trail[Math.max(0, this.trail.length - 1 - (i + 1) * gap)];
+      if (!spot) return;
+      const px = f.x;
+      const k = Math.min(1, 9 * dt);
+      f.x += (spot.x - f.x) * k;
+      f.y += (spot.y - f.y) * k;
+      f.moving = Math.abs(f.x - px) > 0.6;
+      if (f.moving) f.facing = f.x > px ? 1 : -1;
+    });
   }
 
   _drawBlocks() {

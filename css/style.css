@@ -266,3 +266,17 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; }
 .lives i.on { color: #ff4d6d; }
 .lives i:not(.on) { transform: scale(.8); }
 @media (max-width: 700px) { .streak { display: none; } }
+
+/* coin counter pops when a coin lands */
+.hud .wallet.pop { animation: coinpop .25s ease-out; }
+@keyframes coinpop { 40% { transform: scale(1.18); } }
+
+/* letter village */
+.village-wrap { max-width: 960px; margin: 0 auto 10px; text-align: center; }
+#village { display: block; margin: 0 auto; border-radius: 20px; box-shadow: 0 8px 0 rgba(38, 49, 79, .15); cursor: pointer; }
+#villageCount { margin: 8px 0 0; color: #fff; font-size: 20px; text-shadow: 0 2px 0 rgba(0, 0, 0, .2); }
+.shelf { max-width: 900px; margin: 14px auto 10px; color: #fff; font-size: 22px; text-shadow: 0 2px 0 rgba(0, 0, 0, .2); }
+#doneCritters { width: min(420px, 70vw); height: auto; }
+#doneCritters[hidden] { display: none; }
+.recorder .big.small { font-size: 24px; min-width: 150px; }
+.parent-body input[type=text] { font: inherit; padding: 8px 10px; border: 2px solid #d9d2bd; border-radius: 10px; min-width: 0; flex: 1; max-width: 260px; }

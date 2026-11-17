@@ -15,7 +15,8 @@ const fresh = () => ({
   hat: 'none',
   pet: 'none',
   unlockAll: false,
-  settings: { voice: true, sfx: true, music: true },
+  settings: { voice: true, sfx: true, music: true, kidName: '' },
+  rescued: {},    // letter -> times freed (they live in the Letter Village)
 });
 
 let memory = null; // fallback when storage is unavailable (private mode, sandboxed frames)

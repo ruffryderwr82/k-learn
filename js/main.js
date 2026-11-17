@@ -1,10 +1,10 @@
 // Screens, menus and wiring between the game, the curriculum and saved progress.
-import { LEVELS, WORLDS, LETTERS, PICTURES, POWERS, SIGHT_WORDS, HEART, makeQuestion } from './curriculum.js';
+import { LEVELS, WORLDS, LETTERS, PICTURES, POWERS, SIGHT_WORDS, HEART, makeQuestion, critterFor } from './curriculum.js';
 import { SOUNDS, segment, soundOf } from './sounds.js';
 import * as store from './progress.js';
 import * as audio from './audio.js';
 import { Game } from './game.js';
-import { drawHero, drawPet, COLORS, HATS, PETS } from './hero.js';
+import { drawHero, drawPet, drawCritter, critterColor, COLORS, HATS, PETS } from './hero.js';
 
 const $ = (id) => document.getElementById(id);
 let state = store.load();
@@ -17,6 +17,10 @@ let lastResult = null;
 const say = (text) => audio.play(text);
 const promptScript = (q) => q.audio || [q.say];
 const canSound = (ids) => !!ids && ids.every(audio.hasSound);
+// "Great job, Sam!" now and then, so praise does not sound the same every time
+const cheer = (withName = Math.random() < 0.3) => (withName && audio.hasKidName() ? [{ cheer: true }, { kid: true }] : [{ cheer: true }]);
+const rescuedEver = () => Object.values(state.rescued || {}).reduce((a, b) => a + b, 0);
+let lastCoins = 0;
 
 // ---- screens --------------------------------------------------------------
 const renderers = { map: renderMap, shop: renderShop, album: renderAlbum, parent: renderParent };
@@ -48,6 +52,14 @@ const game = new Game($('game'), {
   onAnswer: (q, right) => { store.recordAnswer(state, q.key, right); store.save(state); },
   onPrompt: showPrompt,
   onHud: (h) => {
+    if (h.coins > lastCoins) {
+      // the counter pops when a coin lands in it
+      const w = $('hudCoins').parentElement;
+      w.classList.remove('pop');
+      void w.offsetWidth;
+      w.classList.add('pop');
+    }
+    lastCoins = h.coins;
     $('hudCoins').textContent = h.coins;
     [...$('hudGems').children].forEach((el, i) => el.classList.toggle('on', h.gems[i]));
     [...$('hudStreak').children].forEach((el, i) => el.classList.toggle('on', h.super || i < h.streak));
@@ -56,7 +68,18 @@ const game = new Game($('game'), {
   },
   onComplete: finishLevel,
   ask: (q) => audio.play(promptScript(q)),
-  praise: (q) => audio.play(q.praiseAudio || q.praise),
+  praise: (q) => {
+    let detail = q.praiseAudio || [q.praise];
+    if (detail[0] === 'Yes!') detail = detail.slice(1);
+    // the very first letter ever freed gets explained
+    const first = !rescuedEver() && game.rescued.length === 1 ? ['You freed a letter! It will follow you.'] : [];
+    return audio.play([...cheer(), { pause: 100 }, ...detail, ...first]);
+  },
+  critterFor,
+  coinTarget: () => {
+    const r = $('hudCoins').parentElement.querySelector('.coin').getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  },
   // A miss: say what was picked (by its sound when there is one). The right answer
   // lights up on screen, and the gate then asks something new.
   wrong: (q, choice) => {
@@ -93,7 +116,9 @@ function startLevel(index) {
     pet: state.pet,
   });
   game.run();
-  audio.music(level.world);
+  lastCoins = 0;
+  audio.music(level.world, level.boss ? 'boss' : null);
+  if (level.boss) audio.sfx('drumroll');
 }
 
 function showPrompt(q, step = 0) {
@@ -151,6 +176,9 @@ function finishLevel(r) {
   state.done[level.id] = Math.max(state.done[level.id] || 0, stars);
   const old = state.gems[level.id] || [false, false, false];
   state.gems[level.id] = old.map((g, i) => g || r.gems[i]);
+  state.rescued = state.rescued || {};
+  for (const l of r.rescued || []) state.rescued[l] = (state.rescued[l] || 0) + 1;
+  doneCritters = [...(r.rescued || [])];
   store.save(state);
 
   $('doneCoins').textContent = r.coins;
@@ -166,7 +194,25 @@ function finishLevel(r) {
     $('donePowerName').textContent = power.name;
     audio.sfx('power');
     say(power.say);
-  } else say(`${['Good work!', 'Great job!', 'Amazing!'][stars - 1]} You got ${r.coins} coins.`);
+  } else {
+    const freed = doneCritters.length;
+    say([...cheer(true), freed ? `You freed ${freed} letter${freed > 1 ? 's' : ''}! They are going home to the village.` : `You got ${r.coins} coins.`]);
+  }
+}
+
+// The letters freed in the level dance on the level-end card.
+let doneCritters = [];
+function drawDoneCritters(t) {
+  const c = $('doneCritters');
+  c.hidden = !doneCritters.length;
+  if (!doneCritters.length || !c.offsetParent) return;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, c.width, c.height);
+  const n = doneCritters.length;
+  const gap = Math.min(80, (c.width - 50) / n);
+  doneCritters.forEach((l, i) => {
+    drawCritter(ctx, c.width / 2 + (i - (n - 1) / 2) * gap, c.height - 6, l, t + i * 0.37, { size: 1.25, hop: 14, facing: i % 2 ? -1 : 1 });
+  });
 }
 
 $('btnNext').onclick = () => {
@@ -228,6 +274,8 @@ $('btnPlay').onclick = () => {
 
 function heroLoop() {
   const t = performance.now() / 1000;
+  drawVillage(t);
+  drawDoneCritters(t);
   for (const [id, size] of [['titleHero', 3.4], ['shopHero', 3.6]]) {
     const c = $(id);
     if (!c.offsetParent) continue;
@@ -384,18 +432,116 @@ function renderShop() {
 // ---- sticker book ---------------------------------------------------------
 const box = (key) => state.mastery[key]?.b || 0;
 
+// ---- letter village --------------------------------------------------------
+// Every freed letter moves into its own house. A house stays boarded up until its
+// letter is rescued, and gets a gold star once he knows the letter's sound.
+const VW = 960;
+const VH = 330;
+const villageJump = {};
+const houseSpot = (i) => ({ x: (i % 13) * (VW / 13) + VW / 26, y: i < 13 ? 150 : 305 });
+
+function drawVillage(t) {
+  const c = $('village');
+  if (!c || !c.offsetParent) return;
+  const ctx = c.getContext('2d');
+  const k = c.width / VW;
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  const sky = ctx.createLinearGradient(0, 0, 0, VH);
+  sky.addColorStop(0, '#8fd8ff');
+  sky.addColorStop(1, '#e6f8ff');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, VW, VH);
+  ctx.fillStyle = '#9be38c';
+  ctx.beginPath();
+  ctx.moveTo(0, 110);
+  for (let x = 0; x <= VW; x += 20) ctx.lineTo(x, 104 + Math.sin(x * 0.012) * 10);
+  ctx.lineTo(VW, VH); ctx.lineTo(0, VH);
+  ctx.fill();
+  ctx.fillStyle = '#e8d3a5'; // the two streets
+  ctx.fillRect(0, 150, VW, 12);
+  ctx.fillRect(0, 305, VW, 12);
+  const rescued = state.rescued || {};
+  Object.keys(LETTERS).forEach((l, i) => {
+    const { x, y } = houseSpot(i);
+    const home = (rescued[l] || 0) > 0;
+    const star = box(`s:${l}`) >= store.MASTERED;
+    // house
+    ctx.fillStyle = home ? critterColor(l).replace('58%)', '82%)') : '#c9cfdc';
+    ctx.fillRect(x - 26, y - 92, 52, 44);
+    ctx.fillStyle = home ? critterColor(l).replace('58%)', '40%)') : '#9aa3b8';
+    ctx.beginPath(); ctx.moveTo(x - 33, y - 90); ctx.lineTo(x, y - 118); ctx.lineTo(x + 33, y - 90); ctx.fill();
+    ctx.fillStyle = home ? '#7a4b2a' : '#8b93a7';
+    ctx.fillRect(x - 9, y - 68, 18, 20);
+    ctx.fillStyle = home ? '#fffdf5' : '#aab1c2';
+    ctx.beginPath(); ctx.arc(x, y - 80, 8, 0, 7); ctx.fill();
+    ctx.fillStyle = home ? '#26314f' : '#8b93a7';
+    ctx.font = '700 14px Andika, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(l, x, y - 80);
+    if (!home) {
+      // boarded up until its letter comes home
+      ctx.strokeStyle = '#7d6a55';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(x - 24, y - 86); ctx.lineTo(x + 24, y - 54); ctx.moveTo(x + 24, y - 86); ctx.lineTo(x - 24, y - 54); ctx.stroke();
+    }
+    if (star) { ctx.font = '18px sans-serif'; ctx.fillText('⭐', x, y - 124); }
+    if (home) {
+      const j = Math.max(0, 1 - (t - (villageJump[l] || -9)) * 2);
+      const wander = Math.sin(t * 0.6 + i * 1.7) * 14;
+      ctx.save();
+      ctx.translate(0, -Math.sin(j * Math.PI) * 40);
+      drawCritter(ctx, x + wander, y - 2, l, t, { size: 0.78, hop: 3, facing: Math.cos(t * 0.6 + i * 1.7) > 0 ? 1 : -1 });
+      ctx.restore();
+      if (rescued[l] > 1) {
+        ctx.fillStyle = '#26314f';
+        ctx.beginPath(); ctx.arc(x + 24, y - 92, 10, 0, 7); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = '700 11px system-ui, sans-serif';
+        ctx.fillText(Math.min(99, rescued[l]), x + 24, y - 91);
+      }
+    }
+  });
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+$('village')?.addEventListener('click', (e) => {
+  const c = $('village');
+  const r = c.getBoundingClientRect();
+  const x = ((e.clientX - r.left) / r.width) * VW;
+  const y = ((e.clientY - r.top) / r.height) * VH;
+  let best = -1;
+  let bestD = 60;
+  Object.keys(LETTERS).forEach((l, i) => {
+    const h = houseSpot(i);
+    const d = Math.hypot(h.x - x, h.y - 50 - y);
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  if (best < 0) return;
+  const l = Object.keys(LETTERS)[best];
+  const info = LETTERS[l];
+  audio.unlock();
+  if (!(state.rescued || {})[l]) { audio.play(['This house is waiting for', { name: l }, 'Free it in a level!']); return; }
+  villageJump[l] = performance.now() / 1000;
+  audio.sfx('free');
+  audio.play(audio.hasSound(soundOf(l)) ? [{ name: l }, 'says', { s: soundOf(l) }, `${info.word}.`] : [{ name: l }, `${info.word}.`]);
+});
+
+function sizeVillage() {
+  const c = $('village');
+  const w = Math.min(960, c.parentElement.clientWidth || 960);
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  c.style.width = `${w}px`;
+  c.style.height = `${(w * VH) / VW}px`;
+  c.width = Math.round(w * dpr);
+  c.height = Math.round(((w * VH) / VW) * dpr);
+}
+window.addEventListener('resize', () => { if (screen === 'album') sizeVillage(); });
+
 function renderAlbum() {
-  const letters = $('albumLetters');
-  letters.innerHTML = '';
-  for (const [l, info] of Object.entries(LETTERS)) {
-    const got = box(`s:${l}`) >= store.MASTERED;   // the sticker is won by knowing the sound
-    const sound = box(`n:${l}`) >= store.MASTERED;  // and colors in with the name
-    const b = document.createElement('button');
-    b.className = `sticker ${got ? 'got' : ''}`;
-    b.innerHTML = `<span>${l.toUpperCase()}${l}</span><span class="pic" style="${sound ? 'filter:none' : ''}">${info.emoji}</span>`;
-    b.onclick = () => { audio.unlock(); audio.play(audio.hasSound(soundOf(l)) ? [{ name: l }, 'says', { s: soundOf(l) }, `${info.word}.`] : [{ name: l }, `${info.word}.`]); };
-    letters.append(b);
-  }
+  sizeVillage();
+  const home = Object.keys(state.rescued || {}).length;
+  $('villageCount').textContent = `${home} / 26 letters home`;
   const wordsEl = $('albumWords');
   wordsEl.innerHTML = '';
   // sight words: every one has a place waiting, so he can see what is left to win
@@ -468,6 +614,7 @@ function renderParent() {
       <label><input type="checkbox" data-set="voice" ${state.settings.voice ? 'checked' : ''}> Speaking voice</label>
       <label><input type="checkbox" data-set="sfx" ${state.settings.sfx ? 'checked' : ''}> Sound effects</label>
       <label><input type="checkbox" data-set="music" ${state.settings.music ? 'checked' : ''}> Music</label>
+      <label>His name <input id="optName" type="text" maxlength="20" autocomplete="off" placeholder="For &quot;Great job, ___!&quot;" value=""></label>
       <button class="plain" id="optTest">Test the voice</button>
       <p>The voice is the device's built-in one. If it is silent, check the mute switch and volume.</p>
     </section>
@@ -485,7 +632,13 @@ function renderParent() {
       store.save(state);
     };
   });
-  $('optTest').onclick = () => { audio.unlock(); audio.play(['Find the letter', { name: 'a' }, 'Great job!']); };
+  $('optName').value = state.settings.kidName || '';
+  $('optName').onchange = (e) => {
+    state.settings.kidName = e.target.value.trim();
+    audio.settings.kidName = state.settings.kidName;
+    store.save(state);
+  };
+  $('optTest').onclick = () => { audio.unlock(); audio.play(['Find the letter', { name: 'a' }, { cheer: true }, { kid: true }]); };
   $('optReset').onclick = (e) => {
     // Two taps instead of a browser dialog, which some app views never show.
     if (!e.target.dataset.sure) { e.target.dataset.sure = '1'; e.target.textContent = 'Tap again to erase coins, stars and learning progress'; return; }
@@ -510,6 +663,13 @@ const STUDIO = {
     label: soundLabel,
     tip: (id) => `<p><b>Say:</b> ${SOUNDS[id].tip}</p><p class="eg">${SOUNDS[id].emoji} as at the ${SOUNDS[id].pos} of <b>${SOUNDS[id].word}</b>. Say only the sound, once, right after you tap.</p>`,
   },
+  cheers: {
+    ids: ['kidname', ...audio.CHEERS.map((_, i) => `cheer:${i}`)],
+    label: (id) => (id === 'kidname' ? 'His name' : `“${audio.CHEERS[Number(id.slice(6))]}”`),
+    tip: (id) => (id === 'kidname'
+      ? '<p><b>Say his name</b>, the way you would call him.</p><p class="eg">The game uses it now and then: "Great job, ___!"</p>'
+      : `<p><b>Say a cheer</b>, like "${audio.CHEERS[Number(id.slice(6))]}", or anything you like to say when he gets it right.</p><p class="eg">One of your cheers is picked at random each time he answers right.</p>`),
+  },
   names: {
     ids: Object.keys(LETTERS).map((l) => `name:${l}`),
     label: (id) => `${id.slice(5).toUpperCase()} ${id.slice(5)}`,
@@ -525,7 +685,9 @@ function renderStudio() {
   const done = ids.filter(audio.hasSound).length;
   if (!ids.includes(studioAt)) studioAt = ids.find((id) => !audio.hasSound(id)) || ids[0];
   const soundsLeft = STUDIO.sounds.ids.filter((id) => !audio.hasSound(id)).length;
-  const intro = studioTab === 'names'
+  const intro = studioTab === 'cheers'
+    ? 'Optional, and kids love it. Record his name and a few cheers in your voice, and the game uses them when he gets answers right. Until then the tablet\'s voice cheers instead.'
+    : studioTab === 'names'
     ? 'Optional. The tablet\'s voice says letter names, but some voices get one wrong. Record any letter here and your voice is used for it instead.'
     : soundsLeft ? '<b>Please do this first.</b> Sounding out needs real letter sounds, and the tablet\'s voice can only say letter names. Until a sound is recorded, the game falls back to key words ("the first sound in moon") and cannot do blending. It takes about five minutes.'
       : 'All sounds are recorded. Tap any one to hear it or record it again.';
@@ -534,10 +696,11 @@ function renderStudio() {
     <div class="tabs2">
       <button data-tab="sounds" class="${studioTab === 'sounds' ? 'on' : ''}">Letter sounds</button>
       <button data-tab="names" class="${studioTab === 'names' ? 'on' : ''}">Letter names</button>
+      <button data-tab="cheers" class="${studioTab === 'cheers' ? 'on' : ''}">Cheers &amp; his name</button>
     </div>
     <p>${intro}</p>
     <div class="recorder">
-      <div class="big">${tab.label(studioAt)}</div>
+      <div class="big ${studioTab === 'cheers' ? 'small' : ''}">${tab.label(studioAt)}</div>
       <div class="how">
         ${tab.tip(studioAt)}
         <div>
@@ -571,7 +734,7 @@ function renderStudio() {
       await audio.openMic();
       btn.classList.add('live');
       btn.textContent = '● Listening…';
-      const heard = await audio.record(studioAt);
+      const heard = await audio.record(studioAt, studioTab === 'cheers' ? 2800 : 1800);
       if (heard) {
         studioMsg = 'Saved. Playing it back. If it has an "uh" on the end, record it again.';
         renderStudio();

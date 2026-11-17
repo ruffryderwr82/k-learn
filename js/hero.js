@@ -269,3 +269,61 @@ export function drawHero(ctx, x, y, size, o = {}) {
   drawHat(ctx, hat, t);
   ctx.restore();
 }
+
+// ---- letter critters ------------------------------------------------------
+// The "lost letters": each one is its letter with eyes and feet. Colors are fixed
+// per letter so a child can start to recognise them.
+const CRITTER_FONT = 'Andika, "Chalkboard SE", "Comic Sans MS", sans-serif';
+export const critterColor = (letter) => `hsl(${(letter.charCodeAt(0) * 47) % 360} 85% 64%)`;
+const DESCENDS = new Set([...'gjpqy']);
+
+/** A letter critter standing with its feet at (x, y). */
+export function drawCritter(ctx, x, y, letter, t = 0, o = {}) {
+  const { size = 1, hop = 0, facing = 1, happy = true, glow = false } = o;
+  const fs = 48 * size;
+  ctx.save();
+  ctx.translate(x, y - Math.abs(Math.sin(t * 9 + letter.charCodeAt(0))) * hop);
+  ctx.font = `700 ${fs}px ${CRITTER_FONT}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  const w = Math.max(ctx.measureText(letter).width, fs * 0.42);
+  const base = -6 * size - (DESCENDS.has(letter) ? fs * 0.2 : 0);
+  if (glow) {
+    ctx.fillStyle = 'rgba(255, 240, 150, 0.45)';
+    ctx.beginPath(); ctx.arc(0, base - fs * 0.3, fs * 0.62, 0, 7); ctx.fill();
+  }
+  // feet
+  ctx.fillStyle = '#26314f';
+  const step = hop ? Math.sin(t * 18) * 3 * size : 0;
+  ctx.beginPath();
+  ctx.ellipse(-w * 0.28 + step, -2 * size, 6 * size, 3.5 * size, 0, 0, 7);
+  ctx.ellipse(w * 0.28 - step, -2 * size, 6 * size, 3.5 * size, 0, 0, 7);
+  ctx.fill();
+  // body: the letter itself, outlined
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 6 * size;
+  ctx.strokeStyle = '#26314f';
+  ctx.strokeText(letter, 0, base);
+  ctx.fillStyle = critterColor(letter);
+  ctx.fillText(letter, 0, base);
+  // eyes peek over the top of the letter, so the letter itself stays easy to read
+  const ey = base - fs * 0.5 - 1.5 * size;
+  const ex = facing * 1.5 * size;
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = '#26314f';
+  ctx.lineWidth = 1.6 * size;
+  ctx.beginPath(); ctx.arc(-5 * size + ex, ey, 4.6 * size, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.arc(5 * size + ex, ey, 4.6 * size, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#26314f';
+  const blink = (t + letter.charCodeAt(0)) % 3.7 < 0.12 ? 0.2 : 1;
+  ctx.beginPath();
+  ctx.ellipse(-5 * size + ex * 1.8, ey + 0.4 * size, 2.2 * size, 2.4 * size * blink, 0, 0, 7);
+  ctx.ellipse(5 * size + ex * 1.8, ey + 0.4 * size, 2.2 * size, 2.4 * size * blink, 0, 0, 7);
+  ctx.fill();
+  if (happy) {
+    // rosy cheeks either side of the letter
+    ctx.fillStyle = 'rgba(255, 120, 150, 0.55)';
+    ctx.beginPath(); ctx.arc(-w * 0.5, base - fs * 0.3, 3 * size, 0, 7); ctx.arc(w * 0.5, base - fs * 0.3, 3 * size, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}

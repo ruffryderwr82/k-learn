@@ -573,3 +573,15 @@ function yesNo(type, i) {
     choices, answer: yes ? 0 : 1,
   };
 }
+
+/**
+ * The letter critter a right answer sets free: the letter itself for letter questions,
+ * otherwise the first letter of the word or sentence.
+ */
+export function critterFor(q) {
+  const right = q.choices?.[q.answer];
+  if (right?.kind === 'letter' && !q.sequence) return right.label.toLowerCase()[0];
+  const text = typeof q.item === 'string' ? q.item : q.show?.text || '';
+  const m = text.match(/[a-z]/i);
+  return m ? m[0].toLowerCase() : null;
+}

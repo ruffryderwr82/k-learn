@@ -26,7 +26,7 @@
     <nav class="row">
       <button class="round-btn" data-go="map" aria-label="Map">🗺️</button>
       <button class="round-btn" data-go="shop" aria-label="Dress up Pip">🎩</button>
-      <button class="round-btn" data-go="album" aria-label="Sticker book">📒</button>
+      <button class="round-btn" data-go="album" aria-label="Letter Village">🏡</button>
     </nav>
     <button id="btnParent" class="parent-btn">Grown-ups: hold here</button>
   </section>
@@ -79,6 +79,7 @@
     <div id="done" class="overlay" hidden>
       <div class="card">
         <div id="doneStars" class="stars"><i>⭐</i><i>⭐</i><i>⭐</i></div>
+        <canvas id="doneCritters" width="460" height="120" hidden></canvas>
         <div id="donePower" class="power" hidden><span id="donePowerIcon"></span><b id="donePowerName"></b></div>
         <div class="row tally">
           <div class="wallet"><span class="coin"></span><b id="doneCoins">0</b></div>
@@ -114,11 +115,12 @@
   <section id="album" class="screen">
     <header class="bar">
       <button class="round-btn small" data-go="title" aria-label="Back">◀</button>
-      <h2>Sticker Book</h2>
+      <h2>Letter Village</h2>
       <div class="wallet">💎 <b data-gems>0</b></div>
     </header>
     <div class="scroll">
-      <div id="albumLetters" class="stickers"></div>
+      <div class="village-wrap"><canvas id="village" aria-label="Letter Village: tap a letter"></canvas><p id="villageCount"></p></div>
+      <h3 class="shelf">Words you can read</h3>
       <div id="albumWords" class="stickers words"></div>
     </div>
   </section>
