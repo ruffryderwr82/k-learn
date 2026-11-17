@@ -124,9 +124,11 @@ full screen and works offline.
 The game is also packaged as a standalone Android app with Capacitor. Everything is inside
 the APK: no server and no internet needed.
 
-- **Get the APK without installing anything:** every push builds one on GitHub. Open the
-  repo's Actions tab → latest "Android APK" run → download `pip-apk` from Artifacts, unzip,
-  copy `pip.apk` to the tablet and open it (allow "install unknown apps" when asked).
+- **Get the APK:** every update to `main` is published as a release. On the tablet, open the repo's
+  **Releases** page (or https://github.com/ruffryderwr82/k-learn/releases/latest), tap the `.apk`
+  file to download it, then open it and tap Install (allow "install unknown apps" the first time).
+  Each release has a higher version number and installs over the last one, keeping progress.
+  Builds from other branches are kept as run artifacts on the Actions tab, for testing.
 - **Build it yourself:** with Android Studio (or JDK 21 + Android SDK) installed, run `npm ci && npm run android:apk`.
   The APK lands in `android/app/build/outputs/apk/debug/`.
 
