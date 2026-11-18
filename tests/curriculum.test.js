@@ -190,3 +190,70 @@ test('every right answer frees a letter critter', () => {
     }
   }
 });
+
+// ---- no mismatched letters, words or pictures ----------------------------------------------
+const { keyWord, namesFor, LETTERS: LETTER_KEYS } = await import('../js/curriculum.js');
+const { soundOf } = await import('../js/sounds.js');
+
+test('every letter\'s example word starts with that letter and its sound (ends, for x)', () => {
+  for (const [l, info] of Object.entries(LETTER_KEYS)) {
+    const parts = segment(info.word.replace(/[^a-z]/g, ''));
+    const unit = info.end ? parts[parts.length - 1] : parts[0];
+    assert.ok(unit.g.startsWith(l), `${l}: ${info.word} does not ${info.end ? 'end' : 'start'} with ${l}`);
+    assert.equal(unit.s, soundOf(l), `${l}: ${info.word} does not ${info.end ? 'end' : 'start'} with the sound of ${l}`);
+  }
+});
+
+test('no question pairs a letter with a word, or a picture with a name, that does not fit', () => {
+  const where = (parts, pos) => (pos === 'start' ? [parts[0]] : pos === 'end' ? [parts[parts.length - 1]] : parts);
+  const levels = [...LEVELS, ...BONUSES.map(bonusLevel)];
+  for (const has of [() => false, () => true]) {
+    for (const level of levels) {
+      const rng = mulberry32(21);
+      for (let i = 0; i < 300; i++) {
+        const q = makeQuestion(level, {}, rng, null, has);
+        const ans = q.choices[q.answer];
+        const at = `${level.id} ${q.type} "${q.item}"`;
+        if (q.type === 'hearSound') {
+          // the example word must contain the letters asked about, making that sound, in that place
+          const key = keyWord(q.item);
+          const parts = segment(key.word.replace(/[^a-z]/g, ''));
+          assert.ok(where(parts, key.pos).some((p) => p.g.startsWith(q.item) && p.s === soundOf(q.item)), `${at}: example word "${key.word}" does not have "${q.item}" at the ${key.pos}`);
+          assert.ok(!q.say.includes('.') || q.say.startsWith(`${key.word}.`), at);
+          // only one choice makes the sound
+          assert.equal(q.choices.filter((c) => c.sound === soundOf(q.item)).length, 1, `${at}: two choices make the same sound`);
+        }
+        if (q.type === 'starts') {
+          const L = LETTER_KEYS[q.item];
+          const sound = soundOf(q.item);
+          for (const c of q.choices) {
+            const word = Object.values(LETTER_KEYS).find((x) => x.emoji === c.label).word;
+            const clash = namesFor(word).some((n) => {
+              const parts = segment(n.replace(/[^a-z]/g, ''));
+              return (L.end ? parts[parts.length - 1] : parts[0])?.s === sound;
+            });
+            if (c === ans) assert.ok(clash, `${at}: the answer ${word} does not fit`);
+            else assert.ok(!clash, `${at}: wrong picture ${word} could also fit`);
+          }
+        }
+        if (['firstSound', 'lastSound', 'midSound'].includes(q.type)) {
+          const parts = segment(q.item);
+          const unit = parts[q.type === 'firstSound' ? 0 : q.type === 'lastSound' ? parts.length - 1 : 1];
+          assert.equal(ans.label, unit.g, `${at}: answer is not the word's own spelling`);
+          assert.equal(q.choices.filter((c) => c.sound === unit.s).length, 1, `${at}: two choices make the same sound`);
+        }
+        const pictures = q.choices.filter((c) => c.kind === 'emoji' && c.say && PICTURES[c.say]);
+        if (pictures.length === q.choices.length) {
+          // a set of pictures: none could share a name or look the same
+          assert.equal(new Set(pictures.map((c) => c.label)).size, pictures.length, `${at}: two pictures look the same`);
+          for (const a of pictures) for (const b of pictures) {
+            if (a !== b) assert.ok(!namesFor(a.say).some((n) => namesFor(b.say).includes(n)), `${at}: ${a.say} and ${b.say} could have the same name`);
+          }
+        }
+        if (q.type === 'pic2word') {
+          for (const c of q.choices) if (c !== ans) assert.ok(!namesFor(q.item).includes(c.label), `${at}: "${c.label}" is another name for the picture`);
+        }
+      }
+    }
+  }
+});
