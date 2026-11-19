@@ -257,3 +257,31 @@ test('no question pairs a letter with a word, or a picture with a name, that doe
     }
   }
 });
+
+// ---- the game's voice -----------------------------------------------------------------------
+test('every line the game can say has a voice clip', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  const { voiceKey } = await import('../js/phrases.js');
+  const manifest = JSON.parse(readFileSync(new URL('../voice/manifest.json', import.meta.url), 'utf8'));
+  for (const c of Object.values(manifest.clips)) assert.ok(existsSync(new URL(`../voice/${c.file}`, import.meta.url)), c.file);
+  // ask far more questions than the voice list did, with a different seed, and look for anything unvoiced
+  const missing = new Set();
+  const check = (part) => {
+    const key = typeof part === 'string' ? voiceKey(part) : part?.name ? `letter:${part.name}` : null;
+    if (key && !manifest.clips[key]) missing.add(typeof part === 'string' ? part : key);
+  };
+  for (const has of [() => false, () => true]) {
+    for (const level of [...LEVELS, ...BONUSES.map(bonusLevel)]) {
+      const rng = mulberry32(99);
+      for (let i = 0; i < 800; i++) {
+        const q = makeQuestion(level, {}, rng, null, has);
+        for (const p of [...q.audio, ...q.praiseAudio]) check(p);
+        for (const c of q.choices) { if (c.say && !c.names) check(`${c.say}.`); for (const n of c.names || []) check({ name: n }); }
+      }
+    }
+  }
+  assert.deepEqual([...missing], [], 'lines with no voice clip (run: npm run voice)');
+  // a letter's name and the word "a" are different clips: the word must never be read as "ay"
+  assert.equal(manifest.clips.a?.text, 'a.');
+  assert.equal(manifest.clips['letter:a']?.text, 'A.');
+});

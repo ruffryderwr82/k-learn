@@ -3,6 +3,7 @@ import { LEVELS, WORLDS, LETTERS, PICTURES, POWERS, SIGHT_WORDS, HEART, MINI, BO
 import { SOUNDS, segment, soundOf } from './sounds.js';
 import * as store from './progress.js';
 import * as audio from './audio.js';
+import { numberWord } from './phrases.js';
 import { Game } from './game.js';
 import { Minis } from './minigames.js';
 import { drawHero, drawPet, drawCritter, critterColor, COLORS, HATS, PETS } from './hero.js';
@@ -103,7 +104,7 @@ function wrongVoice(q, choice) {
   const bySound = choice.sound && audio.hasSound(choice.sound) && promptScript(q).some((part) => part.s);
   const picked = bySound ? ['That one says', { s: choice.sound }]
     : choice.names ? ['That one is', ...choice.names.map((name) => ({ name }))]
-      : [choice.say ? `That one is ${choice.say}.` : 'Not that one.'];
+      : choice.say ? ['That one is', `${choice.say}.`] : ['Not that one.'];
   return audio.play(picked);
 }
 
@@ -163,7 +164,7 @@ function finishBonus(r) {
   starEls.forEach((el) => el.classList.remove('on'));
   $('miniDone').hidden = false;
   setTimeout(() => starEls.forEach((el, k) => el.classList.toggle('on', k < stars)), 150);
-  say([...cheer(true), `You got ${r.coins} coins.`, first ? 'And a gem!' : '']);
+  say([...cheer(true), 'Look at all your coins!', first ? 'And a gem!' : '']);
 }
 
 const nextAfterBonus = () => {
@@ -285,7 +286,8 @@ function finishLevel(r) {
     say(power.say);
   } else {
     const freed = doneCritters.length;
-    say([...cheer(true), freed ? `You freed ${freed} letter${freed > 1 ? 's' : ''}! They are going home to the village.` : `You got ${r.coins} coins.`, ...bonusNews]);
+    const freedLine = freed ? ['You freed', numberWord(freed), freed > 1 ? 'letters!' : 'letter!', 'They are going home to the village.'] : ['Look at all your coins!'];
+    say([...cheer(true), ...freedLine, ...bonusNews]);
   }
 }
 
@@ -443,7 +445,7 @@ function renderMap() {
   $('gateIcon').textContent = beaten ? '✅' : open ? '👑' : '🔒';
   $('gate').onclick = () => {
     audio.unlock();
-    say(beaten ? 'You beat this boss!' : open ? 'The boss door is open!' : `You need ${gate.need - gate.have} more stickers to open the boss door. Keep playing to win them!`);
+    say(beaten ? 'You beat this boss!' : open ? 'The boss door is open!' : 'Keep playing to open the boss door!');
   };
 
   const nodes = $('levelNodes');
@@ -511,7 +513,7 @@ function shopItem(kind, id, def, preview) {
       if (prize || purse < def.cost) {
         audio.sfx('wrong');
         b.classList.add('nope');
-        say(prize ? 'Beat the last boss to win this one.' : `You need ${def.cost - purse} more ${def.gems ? 'gems' : 'coins'}.`);
+        say(prize ? 'Beat the last boss to win this one.' : def.gems ? 'You need more gems. Find the hidden gems in the levels!' : 'You need more coins. Keep playing!');
         setTimeout(() => b.classList.remove('nope'), 300);
         return;
       }
@@ -703,6 +705,7 @@ function renderParent() {
 
   $('parentBody').innerHTML = `
     <section id="studio"></section>
+    <section id="voiceCheck"></section>
     <section>
       <h3>How it teaches</h3>
       <p>The game follows systematic phonics, the sounding-out method: first the <b>sound</b> each letter makes, a few letters at a time; then <b>blending</b> sounds into words (s-a-t, sat) and <b>hearing</b> the sounds inside words; then reading and <b>spelling</b> words made only of sounds already taught. </p>
@@ -747,6 +750,7 @@ function renderParent() {
     </section>`;
 
   renderStudio();
+  renderVoiceCheck();
   $('optUnlock').onchange = (e) => { state.unlockAll = e.target.checked; store.save(state); };
   document.querySelectorAll('[data-set]').forEach((el) => {
     el.onchange = () => {
@@ -873,12 +877,35 @@ function renderStudio() {
   };
 }
 
+// Every ready-made voice line, to listen through on the tablet. Anything that sounds wrong can
+// be re-made (tools/voicegen.mjs), and a letter name can be replaced with your own recording.
+function renderVoiceCheck() {
+  const el = $('voiceCheck');
+  const lines = audio.voiceLines();
+  if (!lines.length) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = `
+    <h3>Voice check</h3>
+    <p>The game's voice is ${lines.length} ready-made clips. Tap any line to hear it. If one sounds wrong, note it down. Letter names can also be replaced with your own recording under Your voice → Letter names.</p>
+    <details><summary>Show all ${lines.length} lines</summary><div class="voicelist"></div></details>`;
+  const list = el.querySelector('.voicelist');
+  const letters = lines.filter((l) => l.key.startsWith('letter:'));
+  const rest = lines.filter((l) => !l.key.startsWith('letter:'));
+  for (const l of [...letters, ...rest]) {
+    const b = document.createElement('button');
+    b.textContent = l.key.startsWith('letter:') ? `Letter ${l.key.slice(7).toUpperCase()}` : l.text;
+    b.onclick = () => { audio.unlock(); audio.sayLine(l.key); };
+    list.append(b);
+  }
+}
+
 // A nudge on the title screen until the sounds are recorded.
 function updateNudge() {
   const missing = Object.keys(SOUNDS).filter((id) => !audio.hasSound(id)).length;
   $('btnParent').textContent = missing ? '🎙 Grown-ups: record the letter sounds (hold here)' : 'Grown-ups: hold here';
 }
 audio.loadClips().then(updateNudge);
+audio.loadVoicePack();
 
 // ---- offline support ------------------------------------------------------
 // (Not needed inside the Android app, where the files are already on the device.)

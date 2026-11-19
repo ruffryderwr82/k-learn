@@ -1,0 +1,1725 @@
+{
+ "clips": {
+  "a": {
+   "file": "a-86f7e4.mp3",
+   "text": "a."
+  },
+  "a bed can run": {
+   "file": "a-bed-can-run-a1854b.mp3",
+   "text": "A bed can run."
+  },
+  "a bee can buzz": {
+   "file": "a-bee-can-buzz-d51c44.mp3",
+   "text": "A bee can buzz."
+  },
+  "a bird can sing": {
+   "file": "a-bird-can-sing-5a1878.mp3",
+   "text": "A bird can sing."
+  },
+  "a bonus game is open": {
+   "file": "a-bonus-game-is-open-217974.mp3",
+   "text": "A bonus game is open!"
+  },
+  "a bus is big": {
+   "file": "a-bus-is-big-5096f4.mp3",
+   "text": "A bus is big."
+  },
+  "a cat can drive a van": {
+   "file": "a-cat-can-drive-a-van-4f45a7.mp3",
+   "text": "A cat can drive a van."
+  },
+  "a dog has six legs": {
+   "file": "a-dog-has-six-legs-409a3a.mp3",
+   "text": "A dog has six legs."
+  },
+  "a duck can swim": {
+   "file": "a-duck-can-swim-1e5ef3.mp3",
+   "text": "A duck can swim."
+  },
+  "a fish can swim": {
+   "file": "a-fish-can-swim-384d0d.mp3",
+   "text": "A fish can swim."
+  },
+  "a frog can hop": {
+   "file": "a-frog-can-hop-c3a4fb.mp3",
+   "text": "A frog can hop."
+  },
+  "a horse can run fast": {
+   "file": "a-horse-can-run-fast-657b6c.mp3",
+   "text": "A horse can run fast."
+  },
+  "a pig can fly": {
+   "file": "a-pig-can-fly-50ab89.mp3",
+   "text": "A pig can fly."
+  },
+  "a snail is on the leaf": {
+   "file": "a-snail-is-on-the-leaf-bd9ccd.mp3",
+   "text": "A snail is on the leaf."
+  },
+  "a snake has feet": {
+   "file": "a-snake-has-feet-26f08e.mp3",
+   "text": "A snake has feet."
+  },
+  "a tree can talk": {
+   "file": "a-tree-can-talk-b95a35.mp3",
+   "text": "A tree can talk."
+  },
+  "a whale is small": {
+   "file": "a-whale-is-small-9536ad.mp3",
+   "text": "A whale is small."
+  },
+  "all": {
+   "file": "all-d87c44.mp3",
+   "text": "all."
+  },
+  "and": {
+   "file": "and-cffa50.mp3",
+   "text": "and."
+  },
+  "and a gem": {
+   "file": "and-a-gem-0f94d8.mp3",
+   "text": "And a gem!"
+  },
+  "apple": {
+   "file": "apple-d0be2d.mp3",
+   "text": "apple."
+  },
+  "are": {
+   "file": "are-5f9e58.mp3",
+   "text": "are."
+  },
+  "at": {
+   "file": "at-27e90d.mp3",
+   "text": "at."
+  },
+  "awesome": {
+   "file": "awesome-03d67c.mp3",
+   "text": "Awesome!"
+  },
+  "back": {
+   "file": "back-61bb8d.mp3",
+   "text": "back."
+  },
+  "bad": {
+   "file": "bad-1902e3.mp3",
+   "text": "bad."
+  },
+  "bag": {
+   "file": "bag-9b4e47.mp3",
+   "text": "bag."
+  },
+  "bake": {
+   "file": "bake-74521f.mp3",
+   "text": "bake."
+  },
+  "ball": {
+   "file": "ball-8bec04.mp3",
+   "text": "ball."
+  },
+  "ban": {
+   "file": "ban-2580d4.mp3",
+   "text": "ban."
+  },
+  "bark": {
+   "file": "bark-cc86fb.mp3",
+   "text": "bark."
+  },
+  "bat": {
+   "file": "bat-9b64d4.mp3",
+   "text": "bat."
+  },
+  "bath": {
+   "file": "bath-b483b6.mp3",
+   "text": "bath."
+  },
+  "be": {
+   "file": "be-986b1b.mp3",
+   "text": "be."
+  },
+  "beat the last boss to win this one": {
+   "file": "beat-the-last-boss-to-win-this-one-785890.mp3",
+   "text": "Beat the last boss to win this one."
+  },
+  "bed": {
+   "file": "bed-fefe23.mp3",
+   "text": "bed."
+  },
+  "bee": {
+   "file": "bee-917ee4.mp3",
+   "text": "bee."
+  },
+  "beet": {
+   "file": "beet-ff8131.mp3",
+   "text": "beet."
+  },
+  "big": {
+   "file": "big-95c4be.mp3",
+   "text": "big."
+  },
+  "bike": {
+   "file": "bike-44d536.mp3",
+   "text": "bike."
+  },
+  "bin": {
+   "file": "bin-9a5d56.mp3",
+   "text": "bin."
+  },
+  "bird": {
+   "file": "bird-cd9281.mp3",
+   "text": "bird."
+  },
+  "bit": {
+   "file": "bit-026e99.mp3",
+   "text": "bit."
+  },
+  "bite": {
+   "file": "bite-6a20d9.mp3",
+   "text": "bite."
+  },
+  "boat": {
+   "file": "boat-2a50dd.mp3",
+   "text": "boat."
+  },
+  "bone": {
+   "file": "bone-ffdf4c.mp3",
+   "text": "bone."
+  },
+  "book": {
+   "file": "book-e7e694.mp3",
+   "text": "book."
+  },
+  "boot": {
+   "file": "boot-5c73b0.mp3",
+   "text": "boot."
+  },
+  "box": {
+   "file": "box-c7d8a6.mp3",
+   "text": "box."
+  },
+  "brilliant": {
+   "file": "brilliant-2f2aa3.mp3",
+   "text": "Brilliant!"
+  },
+  "bud": {
+   "file": "bud-ac9b80.mp3",
+   "text": "bud."
+  },
+  "bug": {
+   "file": "bug-688585.mp3",
+   "text": "bug."
+  },
+  "bump the sounds in order": {
+   "file": "bump-the-sounds-in-order-694316.mp3",
+   "text": "Bump the sounds in order."
+  },
+  "bun": {
+   "file": "bun-b14615.mp3",
+   "text": "bun."
+  },
+  "burn": {
+   "file": "burn-03b5db.mp3",
+   "text": "burn."
+  },
+  "bus": {
+   "file": "bus-32c70c.mp3",
+   "text": "bus."
+  },
+  "cab": {
+   "file": "cab-098ea0.mp3",
+   "text": "cab."
+  },
+  "cake": {
+   "file": "cake-5ddc2a.mp3",
+   "text": "cake."
+  },
+  "can": {
+   "file": "can-7e9219.mp3",
+   "text": "can."
+  },
+  "cane": {
+   "file": "cane-95df5d.mp3",
+   "text": "cane."
+  },
+  "cap": {
+   "file": "cap-ac4be5.mp3",
+   "text": "cap."
+  },
+  "cape": {
+   "file": "cape-7eb684.mp3",
+   "text": "cape."
+  },
+  "car": {
+   "file": "car-9e3252.mp3",
+   "text": "car."
+  },
+  "cart": {
+   "file": "cart-8bfb4e.mp3",
+   "text": "cart."
+  },
+  "cat": {
+   "file": "cat-9d989e.mp3",
+   "text": "cat."
+  },
+  "chat": {
+   "file": "chat-7ecde3.mp3",
+   "text": "chat."
+  },
+  "chick": {
+   "file": "chick-ed10eb.mp3",
+   "text": "chick."
+  },
+  "chip": {
+   "file": "chip-c6b6df.mp3",
+   "text": "chip."
+  },
+  "chop": {
+   "file": "chop-0914b7.mp3",
+   "text": "chop."
+  },
+  "clap": {
+   "file": "clap-c19ab8.mp3",
+   "text": "clap."
+  },
+  "come": {
+   "file": "come-d88d47.mp3",
+   "text": "come."
+  },
+  "cone": {
+   "file": "cone-be60dc.mp3",
+   "text": "cone."
+  },
+  "cop": {
+   "file": "cop-3bb409.mp3",
+   "text": "cop."
+  },
+  "cord": {
+   "file": "cord-3d72b3.mp3",
+   "text": "cord."
+  },
+  "corn": {
+   "file": "corn-7cacb7.mp3",
+   "text": "corn."
+  },
+  "corn is a snack": {
+   "file": "corn-is-a-snack-956efa.mp3",
+   "text": "Corn is a snack."
+  },
+  "cot": {
+   "file": "cot-7fd2e9.mp3",
+   "text": "cot."
+  },
+  "crab": {
+   "file": "crab-13e87b.mp3",
+   "text": "crab."
+  },
+  "crib": {
+   "file": "crib-a33827.mp3",
+   "text": "crib."
+  },
+  "cub": {
+   "file": "cub-0139bc.mp3",
+   "text": "cub."
+  },
+  "cup": {
+   "file": "cup-ad00c6.mp3",
+   "text": "cup."
+  },
+  "cut": {
+   "file": "cut-06e45e.mp3",
+   "text": "cut."
+  },
+  "den": {
+   "file": "den-0e1ddf.mp3",
+   "text": "den."
+  },
+  "did": {
+   "file": "did-5dd92d.mp3",
+   "text": "did."
+  },
+  "dig": {
+   "file": "dig-9080a5.mp3",
+   "text": "dig."
+  },
+  "dime": {
+   "file": "dime-45b0af.mp3",
+   "text": "dime."
+  },
+  "do": {
+   "file": "do-eadcd9.mp3",
+   "text": "do."
+  },
+  "dog": {
+   "file": "dog-e49512.mp3",
+   "text": "dog."
+  },
+  "dot": {
+   "file": "dot-348a3c.mp3",
+   "text": "dot."
+  },
+  "drip": {
+   "file": "drip-049c32.mp3",
+   "text": "drip."
+  },
+  "drop": {
+   "file": "drop-aa20c3.mp3",
+   "text": "drop."
+  },
+  "drum": {
+   "file": "drum-1804bf.mp3",
+   "text": "drum."
+  },
+  "duck": {
+   "file": "duck-5ece24.mp3",
+   "text": "duck."
+  },
+  "dug": {
+   "file": "dug-ff3bde.mp3",
+   "text": "dug."
+  },
+  "egg": {
+   "file": "egg-4fa602.mp3",
+   "text": "egg."
+  },
+  "eight": {
+   "file": "eight-d479fa.mp3",
+   "text": "eight"
+  },
+  "eleven": {
+   "file": "eleven-cc5a0c.mp3",
+   "text": "eleven"
+  },
+  "ends with": {
+   "file": "ends-with-8cfa56.mp3",
+   "text": "ends with"
+  },
+  "fan": {
+   "file": "fan-289944.mp3",
+   "text": "fan."
+  },
+  "fed": {
+   "file": "fed-8d0ea5.mp3",
+   "text": "fed."
+  },
+  "feel": {
+   "file": "feel-ccfcd3.mp3",
+   "text": "feel."
+  },
+  "feet": {
+   "file": "feet-67c0fc.mp3",
+   "text": "feet."
+  },
+  "fin": {
+   "file": "fin-b76049.mp3",
+   "text": "fin."
+  },
+  "find its big partner": {
+   "file": "find-its-big-partner-a20944.mp3",
+   "text": "Find its big partner."
+  },
+  "find its little partner": {
+   "file": "find-its-little-partner-8189a0.mp3",
+   "text": "Find its little partner."
+  },
+  "find the letter": {
+   "file": "find-the-letter-ff1eb0.mp3",
+   "text": "Find the letter"
+  },
+  "find the picture": {
+   "file": "find-the-picture-81950a.mp3",
+   "text": "Find the picture."
+  },
+  "find the word": {
+   "file": "find-the-word-e3826a.mp3",
+   "text": "Find the word"
+  },
+  "finish the level before it to play this bonus game": {
+   "file": "finish-the-level-before-it-to-play-this--220605.mp3",
+   "text": "Finish the level before it to play this bonus game."
+  },
+  "fish": {
+   "file": "fish-64875f.mp3",
+   "text": "fish."
+  },
+  "fit": {
+   "file": "fit-9c20b9.mp3",
+   "text": "fit."
+  },
+  "five": {
+   "file": "five-4db2c1.mp3",
+   "text": "five."
+  },
+  "flag": {
+   "file": "flag-112f3a.mp3",
+   "text": "flag."
+  },
+  "flat": {
+   "file": "flat-b9c7b4.mp3",
+   "text": "flat."
+  },
+  "flip": {
+   "file": "flip-40f924.mp3",
+   "text": "flip."
+  },
+  "fog": {
+   "file": "fog-dfebbd.mp3",
+   "text": "fog."
+  },
+  "for": {
+   "file": "for-43eef9.mp3",
+   "text": "for."
+  },
+  "fork": {
+   "file": "fork-3f673f.mp3",
+   "text": "fork."
+  },
+  "four": {
+   "file": "four-9f8f7e.mp3",
+   "text": "four"
+  },
+  "fox": {
+   "file": "fox-ff0f0a.mp3",
+   "text": "fox."
+  },
+  "free it in a level": {
+   "file": "free-it-in-a-level-73a90e.mp3",
+   "text": "Free it in a level!"
+  },
+  "frog": {
+   "file": "frog-b3e0f6.mp3",
+   "text": "frog."
+  },
+  "from": {
+   "file": "from-0b1e95.mp3",
+   "text": "from."
+  },
+  "fun": {
+   "file": "fun-c84c50.mp3",
+   "text": "fun."
+  },
+  "get": {
+   "file": "get-783923.mp3",
+   "text": "get."
+  },
+  "gift": {
+   "file": "gift-b7b2fb.mp3",
+   "text": "gift."
+  },
+  "go": {
+   "file": "go-1ec558.mp3",
+   "text": "go."
+  },
+  "goat": {
+   "file": "goat-162d15.mp3",
+   "text": "goat."
+  },
+  "golf": {
+   "file": "golf-e53d92.mp3",
+   "text": "golf."
+  },
+  "got": {
+   "file": "got-816ade.mp3",
+   "text": "got."
+  },
+  "great reading": {
+   "file": "great-reading-557ac2.mp3",
+   "text": "Great reading!"
+  },
+  "gum": {
+   "file": "gum-db4517.mp3",
+   "text": "gum."
+  },
+  "ham": {
+   "file": "ham-788449.mp3",
+   "text": "ham."
+  },
+  "hand": {
+   "file": "hand-9621a2.mp3",
+   "text": "hand."
+  },
+  "hat": {
+   "file": "hat-10e586.mp3",
+   "text": "hat."
+  },
+  "have": {
+   "file": "have-ff87ce.mp3",
+   "text": "have."
+  },
+  "he": {
+   "file": "he-30f088.mp3",
+   "text": "he."
+  },
+  "he will bake a cake": {
+   "file": "he-will-bake-a-cake-d5c960.mp3",
+   "text": "He will bake a cake."
+  },
+  "hen": {
+   "file": "hen-d81108.mp3",
+   "text": "hen."
+  },
+  "her": {
+   "file": "her-999400.mp3",
+   "text": "her."
+  },
+  "here": {
+   "file": "here-0154c0.mp3",
+   "text": "here."
+  },
+  "him": {
+   "file": "him-330317.mp3",
+   "text": "him."
+  },
+  "hip": {
+   "file": "hip-ae763d.mp3",
+   "text": "hip."
+  },
+  "hit": {
+   "file": "hit-d7d390.mp3",
+   "text": "hit."
+  },
+  "hole": {
+   "file": "hole-0e2148.mp3",
+   "text": "hole."
+  },
+  "home": {
+   "file": "home-e83249.mp3",
+   "text": "home."
+  },
+  "hop": {
+   "file": "hop-cffb6b.mp3",
+   "text": "hop."
+  },
+  "hope": {
+   "file": "hope-495574.mp3",
+   "text": "hope."
+  },
+  "horse": {
+   "file": "horse-091b50.mp3",
+   "text": "horse."
+  },
+  "hose": {
+   "file": "hose-44da77.mp3",
+   "text": "hose."
+  },
+  "hot": {
+   "file": "hot-4bd8ed.mp3",
+   "text": "hot."
+  },
+  "hug": {
+   "file": "hug-f11fb5.mp3",
+   "text": "hug."
+  },
+  "hunt": {
+   "file": "hunt-8c72b5.mp3",
+   "text": "hunt."
+  },
+  "hut": {
+   "file": "hut-00020d.mp3",
+   "text": "hut."
+  },
+  "i": {
+   "file": "i-042dc4.mp3",
+   "text": "I."
+  },
+  "i like to ride my bike": {
+   "file": "i-like-to-ride-my-bike-d3323d.mp3",
+   "text": "I like to ride my bike."
+  },
+  "i see a red bug": {
+   "file": "i-see-a-red-bug-a304ca.mp3",
+   "text": "I see a red bug."
+  },
+  "iguana": {
+   "file": "iguana-d9b6a7.mp3",
+   "text": "iguana."
+  },
+  "in": {
+   "file": "in-af10ef.mp3",
+   "text": "in."
+  },
+  "is": {
+   "file": "is-b47f36.mp3",
+   "text": "is."
+  },
+  "it": {
+   "file": "it-6c5522.mp3",
+   "text": "it."
+  },
+  "it is a big ship": {
+   "file": "it-is-a-big-ship-e2b95b.mp3",
+   "text": "It is a big ship."
+  },
+  "jam": {
+   "file": "jam-da3dd5.mp3",
+   "text": "jam."
+  },
+  "jet": {
+   "file": "jet-2f659b.mp3",
+   "text": "jet."
+  },
+  "jog": {
+   "file": "jog-b98579.mp3",
+   "text": "jog."
+  },
+  "juice": {
+   "file": "juice-07ef87.mp3",
+   "text": "juice."
+  },
+  "keep playing to open the boss door": {
+   "file": "keep-playing-to-open-the-boss-door-93812a.mp3",
+   "text": "Keep playing to open the boss door!"
+  },
+  "kick": {
+   "file": "kick-eac613.mp3",
+   "text": "kick."
+  },
+  "kid": {
+   "file": "kid-3f158d.mp3",
+   "text": "kid."
+  },
+  "king": {
+   "file": "king-481902.mp3",
+   "text": "king."
+  },
+  "kit": {
+   "file": "kit-b17eb1.mp3",
+   "text": "kit."
+  },
+  "kite": {
+   "file": "kite-34e1c7.mp3",
+   "text": "kite."
+  },
+  "lake": {
+   "file": "lake-f3c45b.mp3",
+   "text": "lake."
+  },
+  "lap": {
+   "file": "lap-fceddd.mp3",
+   "text": "lap."
+  },
+  "leaf": {
+   "file": "leaf-987982.mp3",
+   "text": "leaf."
+  },
+  "leg": {
+   "file": "leg-321d6c.mp3",
+   "text": "leg."
+  },
+  "letter": {
+   "file": "letter-18cc85.mp3",
+   "text": "letter!"
+  },
+  "letter meadow": {
+   "file": "letter-meadow-601c1c.mp3",
+   "text": "Letter Meadow"
+  },
+  "letter:a": {
+   "file": "letter-a-590a01.mp3",
+   "text": "A."
+  },
+  "letter:b": {
+   "file": "letter-b-b8ee8c.mp3",
+   "text": "B."
+  },
+  "letter:c": {
+   "file": "letter-c-2a2e13.mp3",
+   "text": "C."
+  },
+  "letter:d": {
+   "file": "letter-d-bd4e25.mp3",
+   "text": "D."
+  },
+  "letter:e": {
+   "file": "letter-e-495230.mp3",
+   "text": "E."
+  },
+  "letter:f": {
+   "file": "letter-f-ea5992.mp3",
+   "text": "F."
+  },
+  "letter:g": {
+   "file": "letter-g-21d3d8.mp3",
+   "text": "G."
+  },
+  "letter:h": {
+   "file": "letter-h-705654.mp3",
+   "text": "H."
+  },
+  "letter:i": {
+   "file": "letter-i-4349f6.mp3",
+   "text": "I."
+  },
+  "letter:j": {
+   "file": "letter-j-065a19.mp3",
+   "text": "J."
+  },
+  "letter:k": {
+   "file": "letter-k-966113.mp3",
+   "text": "K."
+  },
+  "letter:l": {
+   "file": "letter-l-277c09.mp3",
+   "text": "L."
+  },
+  "letter:m": {
+   "file": "letter-m-1a7365.mp3",
+   "text": "M."
+  },
+  "letter:n": {
+   "file": "letter-n-2b6b19.mp3",
+   "text": "N."
+  },
+  "letter:o": {
+   "file": "letter-o-0aec78.mp3",
+   "text": "O."
+  },
+  "letter:p": {
+   "file": "letter-p-c899b5.mp3",
+   "text": "P."
+  },
+  "letter:q": {
+   "file": "letter-q-02437c.mp3",
+   "text": "Q."
+  },
+  "letter:r": {
+   "file": "letter-r-b1eccc.mp3",
+   "text": "R."
+  },
+  "letter:s": {
+   "file": "letter-s-fb3139.mp3",
+   "text": "S."
+  },
+  "letter:t": {
+   "file": "letter-t-3c9ec5.mp3",
+   "text": "T."
+  },
+  "letter:u": {
+   "file": "letter-u-441fba.mp3",
+   "text": "U."
+  },
+  "letter:v": {
+   "file": "letter-v-a10eda.mp3",
+   "text": "V."
+  },
+  "letter:w": {
+   "file": "letter-w-ff9528.mp3",
+   "text": "W."
+  },
+  "letter:x": {
+   "file": "letter-x-ca51e1.mp3",
+   "text": "X."
+  },
+  "letter:y": {
+   "file": "letter-y-795310.mp3",
+   "text": "Y."
+  },
+  "letter:z": {
+   "file": "letter-z-97bd3c.mp3",
+   "text": "Z."
+  },
+  "letters": {
+   "file": "letters-bef21e.mp3",
+   "text": "letters!"
+  },
+  "lid": {
+   "file": "lid-a53814.mp3",
+   "text": "lid."
+  },
+  "like": {
+   "file": "like-c4eb7d.mp3",
+   "text": "like."
+  },
+  "line": {
+   "file": "line-264f39.mp3",
+   "text": "line."
+  },
+  "lion": {
+   "file": "lion-eaf14a.mp3",
+   "text": "lion."
+  },
+  "lip": {
+   "file": "lip-7d7287.mp3",
+   "text": "lip."
+  },
+  "listen to the train": {
+   "file": "listen-to-the-train-d8fc58.mp3",
+   "text": "Listen to the train!"
+  },
+  "loaf": {
+   "file": "loaf-c01f28.mp3",
+   "text": "loaf."
+  },
+  "lock": {
+   "file": "lock-e11779.mp3",
+   "text": "lock."
+  },
+  "log": {
+   "file": "log-7babc2.mp3",
+   "text": "log."
+  },
+  "long": {
+   "file": "long-bd3027.mp3",
+   "text": "long."
+  },
+  "look": {
+   "file": "look-e09315.mp3",
+   "text": "look."
+  },
+  "look at all your coins": {
+   "file": "look-at-all-your-coins-a63194.mp3",
+   "text": "Look at all your coins!"
+  },
+  "look at the train go": {
+   "file": "look-at-the-train-go-4faa25.mp3",
+   "text": "Look at the train go!"
+  },
+  "lot": {
+   "file": "lot-dcf6aa.mp3",
+   "text": "lot."
+  },
+  "luck": {
+   "file": "luck-7be77f.mp3",
+   "text": "luck."
+  },
+  "mad": {
+   "file": "mad-1b3ccc.mp3",
+   "text": "mad."
+  },
+  "main": {
+   "file": "main-b28b7a.mp3",
+   "text": "main."
+  },
+  "man": {
+   "file": "man-8175e3.mp3",
+   "text": "man."
+  },
+  "map": {
+   "file": "map-37745e.mp3",
+   "text": "map."
+  },
+  "mat": {
+   "file": "mat-cc7c5b.mp3",
+   "text": "mat."
+  },
+  "me": {
+   "file": "me-b1c1d8.mp3",
+   "text": "me."
+  },
+  "mean": {
+   "file": "mean-5f00f7.mp3",
+   "text": "mean."
+  },
+  "men": {
+   "file": "men-6711b9.mp3",
+   "text": "men."
+  },
+  "milk": {
+   "file": "milk-cf5dbf.mp3",
+   "text": "milk."
+  },
+  "mint": {
+   "file": "mint-16d0d8.mp3",
+   "text": "mint."
+  },
+  "moon": {
+   "file": "moon-46dcd4.mp3",
+   "text": "moon."
+  },
+  "mop": {
+   "file": "mop-e428b5.mp3",
+   "text": "mop."
+  },
+  "mud": {
+   "file": "mud-589539.mp3",
+   "text": "mud."
+  },
+  "my": {
+   "file": "my-3ece14.mp3",
+   "text": "my."
+  },
+  "nap": {
+   "file": "nap-c2640f.mp3",
+   "text": "nap."
+  },
+  "net": {
+   "file": "net-391b66.mp3",
+   "text": "net."
+  },
+  "new power bubble shield it blocks one bump from a grump": {
+   "file": "new-power-bubble-shield-it-blocks-one-bu-55d3dc.mp3",
+   "text": "New power! Bubble shield. It blocks one bump from a Grump."
+  },
+  "new power coin magnet coins fly right to you": {
+   "file": "new-power-coin-magnet-coins-fly-right-to-d5045e.mp3",
+   "text": "New power! Coin magnet. Coins fly right to you."
+  },
+  "new power dash tap the dash button to zoom and smash cracked walls": {
+   "file": "new-power-dash-tap-the-dash-button-to-zo-4831d9.mp3",
+   "text": "New power! Dash. Tap the dash button to zoom and smash cracked walls."
+  },
+  "new power double jump tap jump again in the air to go higher": {
+   "file": "new-power-double-jump-tap-jump-again-in--ff764c.mp3",
+   "text": "New power! Double jump. Tap jump again in the air to go higher."
+  },
+  "nice one": {
+   "file": "nice-one-79dcc0.mp3",
+   "text": "Nice one!"
+  },
+  "nine": {
+   "file": "nine-b4ddce.mp3",
+   "text": "nine."
+  },
+  "no": {
+   "file": "no-fd1286.mp3",
+   "text": "no."
+  },
+  "no way": {
+   "file": "no-way-1b20fd.mp3",
+   "text": "No way!"
+  },
+  "nod": {
+   "file": "nod-55e5f0.mp3",
+   "text": "nod."
+  },
+  "nose": {
+   "file": "nose-1a1f58.mp3",
+   "text": "nose."
+  },
+  "not": {
+   "file": "not-557f25.mp3",
+   "text": "not."
+  },
+  "not quite": {
+   "file": "not-quite-be7fbc.mp3",
+   "text": "Not quite."
+  },
+  "not that one": {
+   "file": "not-that-one-f9758b.mp3",
+   "text": "Not that one."
+  },
+  "note": {
+   "file": "note-c51048.mp3",
+   "text": "note."
+  },
+  "nut": {
+   "file": "nut-85ae17.mp3",
+   "text": "nut."
+  },
+  "octopus": {
+   "file": "octopus-460b8d.mp3",
+   "text": "octopus."
+  },
+  "of": {
+   "file": "of-de04fa.mp3",
+   "text": "of."
+  },
+  "oh no three misses back you go you can do it": {
+   "file": "oh-no-three-misses-back-you-go-you-can-d-cf637f.mp3",
+   "text": "Oh no! Three misses. Back you go. You can do it!"
+  },
+  "on": {
+   "file": "on-db3d40.mp3",
+   "text": "on."
+  },
+  "one": {
+   "file": "one-fe05bc.mp3",
+   "text": "one."
+  },
+  "out": {
+   "file": "out-f4800d.mp3",
+   "text": "out."
+  },
+  "pan": {
+   "file": "pan-bd2bd8.mp3",
+   "text": "pan."
+  },
+  "pat": {
+   "file": "pat-7ffe1b.mp3",
+   "text": "pat."
+  },
+  "pen": {
+   "file": "pen-31a841.mp3",
+   "text": "pen."
+  },
+  "pet": {
+   "file": "pet-1b034c.mp3",
+   "text": "pet."
+  },
+  "pick": {
+   "file": "pick-4c2e85.mp3",
+   "text": "pick."
+  },
+  "pig": {
+   "file": "pig-2cd4ba.mp3",
+   "text": "pig."
+  },
+  "pin": {
+   "file": "pin-d145a2.mp3",
+   "text": "pin."
+  },
+  "pit": {
+   "file": "pit-008844.mp3",
+   "text": "pit."
+  },
+  "plan": {
+   "file": "plan-bed971.mp3",
+   "text": "plan."
+  },
+  "plum": {
+   "file": "plum-d6a0ca.mp3",
+   "text": "plum."
+  },
+  "pop": {
+   "file": "pop-4f197c.mp3",
+   "text": "pop."
+  },
+  "pot": {
+   "file": "pot-cb79bd.mp3",
+   "text": "pot."
+  },
+  "pup": {
+   "file": "pup-b7257d.mp3",
+   "text": "pup."
+  },
+  "queen": {
+   "file": "queen-410114.mp3",
+   "text": "queen."
+  },
+  "rag": {
+   "file": "rag-69a537.mp3",
+   "text": "rag."
+  },
+  "rain": {
+   "file": "rain-fbec17.mp3",
+   "text": "rain."
+  },
+  "rain is wet": {
+   "file": "rain-is-wet-5052be.mp3",
+   "text": "Rain is wet."
+  },
+  "rat": {
+   "file": "rat-359ce0.mp3",
+   "text": "rat."
+  },
+  "read it find the picture": {
+   "file": "read-it-find-the-picture-a928d1.mp3",
+   "text": "Read it. Find the picture."
+  },
+  "read it is it true thumbs up or thumbs down": {
+   "file": "read-it-is-it-true-thumbs-up-or-thumbs-d-87b4b4.mp3",
+   "text": "Read it. Is it true? Thumbs up or thumbs down?"
+  },
+  "read the train": {
+   "file": "read-the-train-81476a.mp3",
+   "text": "Read the train!"
+  },
+  "rib": {
+   "file": "rib-41b7eb.mp3",
+   "text": "rib."
+  },
+  "ring": {
+   "file": "ring-5c7d28.mp3",
+   "text": "ring."
+  },
+  "rock": {
+   "file": "rock-38464b.mp3",
+   "text": "rock."
+  },
+  "rocket": {
+   "file": "rocket-ef89a3.mp3",
+   "text": "rocket."
+  },
+  "rod": {
+   "file": "rod-f9f039.mp3",
+   "text": "rod."
+  },
+  "rope": {
+   "file": "rope-039769.mp3",
+   "text": "rope."
+  },
+  "rose": {
+   "file": "rose-7b7074.mp3",
+   "text": "rose."
+  },
+  "rug": {
+   "file": "rug-0602f9.mp3",
+   "text": "rug."
+  },
+  "run": {
+   "file": "run-df6ad1.mp3",
+   "text": "run."
+  },
+  "sad": {
+   "file": "sad-b49146.mp3",
+   "text": "sad."
+  },
+  "said": {
+   "file": "said-abc135.mp3",
+   "text": "said."
+  },
+  "says": {
+   "file": "says-dcf06e.mp3",
+   "text": "says"
+  },
+  "seal": {
+   "file": "seal-0f0ed7.mp3",
+   "text": "seal."
+  },
+  "seat": {
+   "file": "seat-ac814c.mp3",
+   "text": "seat."
+  },
+  "see": {
+   "file": "see-3d637f.mp3",
+   "text": "see."
+  },
+  "set": {
+   "file": "set-65c10d.mp3",
+   "text": "set."
+  },
+  "seven": {
+   "file": "seven-a00bbe.mp3",
+   "text": "seven"
+  },
+  "shark": {
+   "file": "shark-4f90af.mp3",
+   "text": "shark."
+  },
+  "she": {
+   "file": "she-4a240e.mp3",
+   "text": "she."
+  },
+  "she has a gift for you": {
+   "file": "she-has-a-gift-for-you-56f98d.mp3",
+   "text": "She has a gift for you."
+  },
+  "shed": {
+   "file": "shed-46eb10.mp3",
+   "text": "shed."
+  },
+  "sheep": {
+   "file": "sheep-6525f2.mp3",
+   "text": "sheep."
+  },
+  "shell": {
+   "file": "shell-ec122f.mp3",
+   "text": "shell."
+  },
+  "ship": {
+   "file": "ship-ed43a8.mp3",
+   "text": "ship."
+  },
+  "shop": {
+   "file": "shop-5042d1.mp3",
+   "text": "shop."
+  },
+  "shut": {
+   "file": "shut-e9683b.mp3",
+   "text": "shut."
+  },
+  "silly": {
+   "file": "silly-e891b5.mp3",
+   "text": "Silly!"
+  },
+  "sing": {
+   "file": "sing-f9bef9.mp3",
+   "text": "sing."
+  },
+  "sip": {
+   "file": "sip-bff879.mp3",
+   "text": "sip."
+  },
+  "sit": {
+   "file": "sit-abdcde.mp3",
+   "text": "sit."
+  },
+  "six": {
+   "file": "six-bec970.mp3",
+   "text": "six."
+  },
+  "skip": {
+   "file": "skip-c7e168.mp3",
+   "text": "skip."
+  },
+  "sky islands": {
+   "file": "sky-islands-f76dc6.mp3",
+   "text": "Sky Islands"
+  },
+  "sled": {
+   "file": "sled-51b2a2.mp3",
+   "text": "sled."
+  },
+  "slid": {
+   "file": "slid-634db2.mp3",
+   "text": "slid."
+  },
+  "slip": {
+   "file": "slip-191c16.mp3",
+   "text": "slip."
+  },
+  "snail": {
+   "file": "snail-9054cc.mp3",
+   "text": "snail."
+  },
+  "snake": {
+   "file": "snake-148627.mp3",
+   "text": "snake."
+  },
+  "so": {
+   "file": "so-cd1b64.mp3",
+   "text": "so."
+  },
+  "soak": {
+   "file": "soak-69491b.mp3",
+   "text": "soak."
+  },
+  "soap": {
+   "file": "soap-f6c1ab.mp3",
+   "text": "soap."
+  },
+  "sob": {
+   "file": "sob-0e7674.mp3",
+   "text": "sob."
+  },
+  "sock": {
+   "file": "sock-18c966.mp3",
+   "text": "sock."
+  },
+  "some": {
+   "file": "some-eb8758.mp3",
+   "text": "some."
+  },
+  "song": {
+   "file": "song-eac923.mp3",
+   "text": "song."
+  },
+  "sound canyon": {
+   "file": "sound-canyon-d366c6.mp3",
+   "text": "Sound Canyon"
+  },
+  "sound it out": {
+   "file": "sound-it-out-ea385c.mp3",
+   "text": "Sound it out."
+  },
+  "spell": {
+   "file": "spell-9e8fbd.mp3",
+   "text": "Spell"
+  },
+  "spoon": {
+   "file": "spoon-f557e9.mp3",
+   "text": "spoon."
+  },
+  "spot": {
+   "file": "spot-9f4b52.mp3",
+   "text": "spot."
+  },
+  "star": {
+   "file": "star-4e3e01.mp3",
+   "text": "star."
+  },
+  "starts with": {
+   "file": "starts-with-2e2ec9.mp3",
+   "text": "starts with"
+  },
+  "step": {
+   "file": "step-bd370d.mp3",
+   "text": "step."
+  },
+  "stir": {
+   "file": "stir-186f52.mp3",
+   "text": "stir."
+  },
+  "stop": {
+   "file": "stop-1b4801.mp3",
+   "text": "stop."
+  },
+  "story summit": {
+   "file": "story-summit-292e65.mp3",
+   "text": "Story Summit"
+  },
+  "sun": {
+   "file": "sun-22fa61.mp3",
+   "text": "sun."
+  },
+  "super": {
+   "file": "super-8451ba.mp3",
+   "text": "Super!"
+  },
+  "swim": {
+   "file": "swim-b89f90.mp3",
+   "text": "swim."
+  },
+  "tag": {
+   "file": "tag-5e9b60.mp3",
+   "text": "tag."
+  },
+  "tame": {
+   "file": "tame-9e7255.mp3",
+   "text": "tame."
+  },
+  "tap": {
+   "file": "tap-25f30d.mp3",
+   "text": "tap."
+  },
+  "tap a sign to pick a track": {
+   "file": "tap-a-sign-to-pick-a-track-04920d.mp3",
+   "text": "Tap a sign to pick a track!"
+  },
+  "ten": {
+   "file": "ten-dd3562.mp3",
+   "text": "ten."
+  },
+  "tend": {
+   "file": "tend-629cc1.mp3",
+   "text": "tend."
+  },
+  "tent": {
+   "file": "tent-899343.mp3",
+   "text": "tent."
+  },
+  "that one is": {
+   "file": "that-one-is-f6cab3.mp3",
+   "text": "That one is"
+  },
+  "that one says": {
+   "file": "that-one-says-1ce5be.mp3",
+   "text": "That one says"
+  },
+  "the": {
+   "file": "the-bbccdf.mp3",
+   "text": "the."
+  },
+  "the bee is on a rose": {
+   "file": "the-bee-is-on-a-rose-4174d0.mp3",
+   "text": "The bee is on a rose."
+  },
+  "the boss door is open": {
+   "file": "the-boss-door-is-open-c202cd.mp3",
+   "text": "The boss door is open!"
+  },
+  "the cat is on a bed": {
+   "file": "the-cat-is-on-a-bed-e79d77.mp3",
+   "text": "The cat is on a bed."
+  },
+  "the king has a ring": {
+   "file": "the-king-has-a-ring-58f8ae.mp3",
+   "text": "The king has a ring."
+  },
+  "the shark has a fin": {
+   "file": "the-shark-has-a-fin-f74f89.mp3",
+   "text": "The shark has a fin."
+  },
+  "the sun is hot": {
+   "file": "the-sun-is-hot-2f2cf4.mp3",
+   "text": "The sun is hot."
+  },
+  "the tricky part is": {
+   "file": "the-tricky-part-is-6fde1a.mp3",
+   "text": "The tricky part is"
+  },
+  "them": {
+   "file": "them-98910a.mp3",
+   "text": "them."
+  },
+  "then": {
+   "file": "then-6f8f8e.mp3",
+   "text": "then."
+  },
+  "there": {
+   "file": "there-490528.mp3",
+   "text": "there."
+  },
+  "they": {
+   "file": "they-f1fdd4.mp3",
+   "text": "they."
+  },
+  "they are going home to the village": {
+   "file": "they-are-going-home-to-the-village-645b81.mp3",
+   "text": "They are going home to the village."
+  },
+  "thin": {
+   "file": "thin-6ca0fa.mp3",
+   "text": "thin."
+  },
+  "this house is waiting for": {
+   "file": "this-house-is-waiting-for-3614a5.mp3",
+   "text": "This house is waiting for"
+  },
+  "this is": {
+   "file": "this-is-87fe39.mp3",
+   "text": "This is"
+  },
+  "this says": {
+   "file": "this-says-45b3fb.mp3",
+   "text": "This says"
+  },
+  "three": {
+   "file": "three-b802f3.mp3",
+   "text": "three"
+  },
+  "tip": {
+   "file": "tip-306a96.mp3",
+   "text": "tip."
+  },
+  "to": {
+   "file": "to-4374aa.mp3",
+   "text": "to."
+  },
+  "top": {
+   "file": "top-af2c7b.mp3",
+   "text": "top."
+  },
+  "trail": {
+   "file": "trail-81a85c.mp3",
+   "text": "trail."
+  },
+  "train": {
+   "file": "train-94efdd.mp3",
+   "text": "train."
+  },
+  "trap": {
+   "file": "trap-e6d307.mp3",
+   "text": "trap."
+  },
+  "tray": {
+   "file": "tray-a08689.mp3",
+   "text": "tray."
+  },
+  "tree": {
+   "file": "tree-80655d.mp3",
+   "text": "tree."
+  },
+  "trip": {
+   "file": "trip-fdd91f.mp3",
+   "text": "trip."
+  },
+  "tub": {
+   "file": "tub-189572.mp3",
+   "text": "tub."
+  },
+  "tug": {
+   "file": "tug-8caaad.mp3",
+   "text": "tug."
+  },
+  "turtle": {
+   "file": "turtle-751051.mp3",
+   "text": "turtle."
+  },
+  "twelve": {
+   "file": "twelve-b521f9.mp3",
+   "text": "twelve"
+  },
+  "two": {
+   "file": "two-ad782e.mp3",
+   "text": "two."
+  },
+  "umbrella": {
+   "file": "umbrella-3ff95a.mp3",
+   "text": "umbrella."
+  },
+  "van": {
+   "file": "van-efa449.mp3",
+   "text": "van."
+  },
+  "volcano": {
+   "file": "volcano-d129e9.mp3",
+   "text": "volcano."
+  },
+  "wag": {
+   "file": "wag-d47d8b.mp3",
+   "text": "wag."
+  },
+  "want": {
+   "file": "want-b5f23b.mp3",
+   "text": "want."
+  },
+  "was": {
+   "file": "was-3de521.mp3",
+   "text": "was."
+  },
+  "watermelon": {
+   "file": "watermelon-ef1a76.mp3",
+   "text": "watermelon."
+  },
+  "way to go": {
+   "file": "way-to-go-e1978f.mp3",
+   "text": "Way to go!"
+  },
+  "we": {
+   "file": "we-676e6f.mp3",
+   "text": "we."
+  },
+  "we can see the moon": {
+   "file": "we-can-see-the-moon-f0fd68.mp3",
+   "text": "We can see the moon."
+  },
+  "we sleep in a bed": {
+   "file": "we-sleep-in-a-bed-9321a9.mp3",
+   "text": "We sleep in a bed."
+  },
+  "web": {
+   "file": "web-ca84d1.mp3",
+   "text": "web."
+  },
+  "were": {
+   "file": "were-a315de.mp3",
+   "text": "were."
+  },
+  "wet": {
+   "file": "wet-c8e275.mp3",
+   "text": "wet."
+  },
+  "whale": {
+   "file": "whale-1769e2.mp3",
+   "text": "whale."
+  },
+  "what": {
+   "file": "what-a110e6.mp3",
+   "text": "what."
+  },
+  "what is the first sound in": {
+   "file": "what-is-the-first-sound-in-eb4e5a.mp3",
+   "text": "What is the first sound in"
+  },
+  "what is the last sound in": {
+   "file": "what-is-the-last-sound-in-75b30b.mp3",
+   "text": "What is the last sound in"
+  },
+  "what is the middle sound in": {
+   "file": "what-is-the-middle-sound-in-abe09b.mp3",
+   "text": "What is the middle sound in"
+  },
+  "what word is it": {
+   "file": "what-word-is-it-e5cb38.mp3",
+   "text": "What word is it?"
+  },
+  "when": {
+   "file": "when-30603f.mp3",
+   "text": "when."
+  },
+  "which one ends with": {
+   "file": "which-one-ends-with-0555c9.mp3",
+   "text": "Which one ends with"
+  },
+  "which one makes the sound at the end of": {
+   "file": "which-one-makes-the-sound-at-the-end-of-78110e.mp3",
+   "text": "Which one makes the sound at the end of"
+  },
+  "which one makes the sound at the start of": {
+   "file": "which-one-makes-the-sound-at-the-start-o-ddcc74.mp3",
+   "text": "Which one makes the sound at the start of"
+  },
+  "which one makes the sound in the middle of": {
+   "file": "which-one-makes-the-sound-in-the-middle--ddb1b1.mp3",
+   "text": "Which one makes the sound in the middle of"
+  },
+  "which one says": {
+   "file": "which-one-says-177eee.mp3",
+   "text": "Which one says"
+  },
+  "which one starts with": {
+   "file": "which-one-starts-with-3d6e60.mp3",
+   "text": "Which one starts with"
+  },
+  "which picture": {
+   "file": "which-picture-6149c7.mp3",
+   "text": "Which picture?"
+  },
+  "win": {
+   "file": "win-c76ac2.mp3",
+   "text": "win."
+  },
+  "wing": {
+   "file": "wing-bd6658.mp3",
+   "text": "wing."
+  },
+  "with": {
+   "file": "with-8fcd25.mp3",
+   "text": "with."
+  },
+  "word woods": {
+   "file": "word-woods-6b4765.mp3",
+   "text": "Word Woods"
+  },
+  "wow": {
+   "file": "wow-5bae37.mp3",
+   "text": "Wow!"
+  },
+  "yes": {
+   "file": "yes-fb360f.mp3",
+   "text": "Yes!"
+  },
+  "yo-yo": {
+   "file": "yo-yo-a52546.mp3",
+   "text": "yo-yo."
+  },
+  "you": {
+   "file": "you-8af56d.mp3",
+   "text": "you."
+  },
+  "you beat this boss": {
+   "file": "you-beat-this-boss-cac5f9.mp3",
+   "text": "You beat this boss!"
+  },
+  "you can eat a rock": {
+   "file": "you-can-eat-a-rock-6b95c8.mp3",
+   "text": "You can eat a rock."
+  },
+  "you did it": {
+   "file": "you-did-it-fa53db.mp3",
+   "text": "You did it!"
+  },
+  "you did it you beat every boss golden pip is yours": {
+   "file": "you-did-it-you-beat-every-boss-golden-pi-cbc6ff.mp3",
+   "text": "You did it! You beat every boss. Golden Pip is yours."
+  },
+  "you freed": {
+   "file": "you-freed-679fce.mp3",
+   "text": "You freed"
+  },
+  "you freed a letter it will follow you": {
+   "file": "you-freed-a-letter-it-will-follow-you-6bdda4.mp3",
+   "text": "You freed a letter! It will follow you."
+  },
+  "you got it": {
+   "file": "you-got-it-6490f7.mp3",
+   "text": "You got it!"
+  },
+  "you need more coins keep playing": {
+   "file": "you-need-more-coins-keep-playing-b00a6f.mp3",
+   "text": "You need more coins. Keep playing!"
+  },
+  "you need more gems find the hidden gems in the levels": {
+   "file": "you-need-more-gems-find-the-hidden-gems--17b9f6.mp3",
+   "text": "You need more gems. Find the hidden gems in the levels!"
+  },
+  "your": {
+   "file": "your-4dc737.mp3",
+   "text": "your."
+  },
+  "zebra": {
+   "file": "zebra-38aa53.mp3",
+   "text": "zebra."
+  },
+  "zero": {
+   "file": "zero-aa8c41.mp3",
+   "text": "zero"
+  },
+  "zip": {
+   "file": "zip-f13e27.mp3",
+   "text": "zip."
+  }
+ },
+ "voice": {
+  "name": "Matilda",
+  "id": "XrExE9yKIg1WjnnlVkGX"
+ },
+ "model": "eleven_v4_turbo",
+ "settings": {
+  "stability": 0.7,
+  "similarity_boost": 0.75,
+  "style": 0.1,
+  "use_speaker_boost": true,
+  "speed": 0.9
+ },
+ "format": "mp3_44100_64"
+}

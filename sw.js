@@ -1,8 +1,8 @@
 // Offline support: cache the whole game on first visit, refresh in the background.
-const CACHE = 'pip-v10';
+const CACHE = 'pip-v11';
 const FILES = [
   './', 'index.html', 'css/style.css', 'manifest.webmanifest',
-  'js/main.js', 'js/game.js', 'js/hero.js', 'js/levelgen.js', 'js/curriculum.js', 'js/sounds.js', 'js/minigames.js', 'js/native.js', 'js/progress.js', 'js/audio.js',
+  'js/main.js', 'js/game.js', 'js/hero.js', 'js/levelgen.js', 'js/curriculum.js', 'js/sounds.js', 'js/minigames.js', 'js/native.js', 'js/phrases.js', 'voice/manifest.json', 'js/progress.js', 'js/audio.js',
   'fonts/andika-700.woff2', 'icons/icon-180.png', 'icons/icon-512.png',
 ];
 

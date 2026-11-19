@@ -1,4 +1,7 @@
 import { hasNative, fileWrite, fileRead, fileDelete, fileList, toBase64, fromBase64 } from './native.js';
+import { CHEERS, voiceKey } from './phrases.js';
+
+export { CHEERS };
 
 // Sound: synthesized effects, music for each world, and the speaking voice.
 // No audio files, so the whole game works offline from a few kilobytes.
@@ -259,8 +262,6 @@ function utter(text) {
 
 let playId = 0; // bumping this cancels whatever is playing
 
-// Things to say when he gets one right. A grown-up can record their own (cheer:0 ... cheer:9).
-export const CHEERS = ['Yes!', 'You got it!', 'Great reading!', 'Wow!', 'Super!', 'Nice one!', 'Awesome!', 'You did it!', 'Way to go!', 'Brilliant!'];
 const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 /**
@@ -272,6 +273,7 @@ const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
  */
 export async function play(script) {
   const parts = typeof script === 'string' ? [script] : script.filter(Boolean);
+  noteMisses(parts);
   lastSpoken.text = parts.map((p) => (typeof p === 'string' ? p : p.s ? `/${p.s}/` : p.name ? `[${p.name.toUpperCase()}]` : p.cheer ? '<cheer>' : p.kid ? '<name>' : '')).filter(Boolean).join(' ');
   hush();
   const id = playId;
@@ -280,13 +282,13 @@ export async function play(script) {
     await wait(80); // iOS drops speech queued in the same tick as a cancel
     for (const part of parts) {
       if (id !== playId) return;
-      if (typeof part === 'string') await utter(part);
+      if (typeof part === 'string') await say(part);
       else if (part.pause) await wait(part.pause);
       else if (part.s) await playSound(part.s);
-      else if (part.name) await (clips.has(`name:${part.name}`) ? playSound(`name:${part.name}`) : utter(part.name.toUpperCase()));
+      else if (part.name) await (clips.has(`name:${part.name}`) ? playSound(`name:${part.name}`) : say(part.name.toUpperCase(), `letter:${part.name}`));
       else if (part.cheer) {
         const mine = [...clips.keys()].filter((k) => k.startsWith('cheer:'));
-        await (mine.length ? playSound(pickOne(mine)) : utter(pickOne(CHEERS)));
+        await (mine.length ? playSound(pickOne(mine)) : say(pickOne(CHEERS)));
       } else if (part.kid) {
         if (clips.has('kidname')) await playSound('kidname');
         else if (settings.kidName) await utter(settings.kidName);
@@ -396,19 +398,83 @@ export const hasKidName = () => clips.has('kidname') || !!settings.kidName;
 export function playSound(id) {
   const clip = clips.get(id);
   if (!clip || !ctx || !settings.voice) return Promise.resolve();
+  const buf = ctx.createBuffer(1, clip.pcm.length, clip.rate);
+  buf.copyToChannel(clip.pcm, 0);
+  return playBuffer(buf, 1.8); // a grown-up's recording sits above the music and effects
+}
+
+function playBuffer(buf, gain) {
   return new Promise((resolve) => {
-    const buf = ctx.createBuffer(1, clip.pcm.length, clip.rate);
-    buf.copyToChannel(clip.pcm, 0);
     const node = ctx.createBufferSource();
     node.buffer = buf;
     const g = ctx.createGain();
-    g.gain.value = 1.8; // voice sits above the music and effects
+    g.gain.value = gain;
     node.connect(g).connect(ctx.destination);
     node.onended = resolve;
     clipNode = node;
     node.start();
-    setTimeout(resolve, (clip.pcm.length / clip.rate) * 1000 + 300); // in case "ended" never fires
+    setTimeout(resolve, buf.duration * 1000 + 300); // in case "ended" never fires
   });
+}
+
+// ---- the game's voice ---------------------------------------------------------
+// Every word, instruction and cheer is a ready-made clip in voice/ (see tools/voicegen.mjs).
+// Anything without a clip is spoken by the tablet's own voice instead.
+let pack = null;            // voice key -> { file, text }
+const decoded = new Map();  // voice key -> AudioBuffer, most recently used last
+export const voiceMisses = new Set(); // text spoken without a clip (tests report these)
+
+export async function loadVoicePack() {
+  try {
+    const r = await fetch('voice/manifest.json');
+    if (r.ok) pack = (await r.json()).clips || null;
+  } catch { pack = null; }
+  return pack ? Object.keys(pack).length : 0;
+}
+
+export const voiceLines = () => (pack ? Object.entries(pack).map(([key, v]) => ({ key, text: v.text })) : []);
+
+function noteMisses(parts) {
+  if (!pack) return;
+  for (const p of parts) {
+    const key = typeof p === 'string' ? voiceKey(p) : p.name ? `letter:${p.name}` : null;
+    if (key && !pack[key]) voiceMisses.add(key);
+  }
+}
+
+async function packBuffer(key) {
+  if (decoded.has(key)) {
+    const buf = decoded.get(key);
+    decoded.delete(key);
+    decoded.set(key, buf);
+    return buf;
+  }
+  const res = await fetch(`voice/${pack[key].file}`);
+  const buf = await ctx.decodeAudioData(await res.arrayBuffer());
+  decoded.set(key, buf);
+  if (decoded.size > 120) decoded.delete(decoded.keys().next().value); // keep memory small
+  return buf;
+}
+
+/** Say a piece of text: its voice clip if there is one, otherwise the tablet's voice. */
+async function say(text, key = voiceKey(text)) {
+  if (!settings.voice) return;
+  if (pack?.[key] && ctx) {
+    try {
+      const id = playId;
+      const buf = await packBuffer(key);
+      if (id !== playId) return; // something else started meanwhile
+      await playBuffer(buf, 1.3);
+      return;
+    } catch { /* fall back to the tablet's voice */ }
+  }
+  await utter(text);
+}
+
+/** Play one voice clip by its key (the grown-ups' voice check list). */
+export function sayLine(key) {
+  const line = pack?.[key];
+  if (line) play(key.startsWith('letter:') ? [{ name: key.slice(7) }] : [line.text]);
 }
 
 /** Cut silence off both ends and bring the level up, so every sound starts at once and is as loud as the others. */
