@@ -90,3 +90,63 @@ test('erasing progress keeps the old save as the backup', () => {
   assert.equal(fresh.coins, 0);
   assert.equal(JSON.parse(localStorage.getItem('k-learn-save-v1-backup')).coins, 500);
 });
+
+test('boss doors: relaxed, balanced (the default) and strict', () => {
+  const bossIndex = LEVELS.findIndex((l) => l.boss);
+  const fresh = () => {
+    const s = store.migrate({});
+    for (let i = 0; i < bossIndex; i++) s.done[LEVELS[i].id] = 1; // every level in the first world finished
+    return s;
+  };
+  const { worldSkills } = store.__forTests;
+  const know = (s, share, box) => {
+    const keys = worldSkills(0);
+    keys.slice(0, Math.ceil(keys.length * share)).forEach((k) => { s.mastery[k] = { b: box, s: box, r: box }; });
+  };
+
+  const relaxed = fresh();
+  relaxed.settings.door = 'relaxed';
+  assert.equal(store.isUnlocked(relaxed, bossIndex), true, 'relaxed: finishing the levels opens the door');
+
+  const balanced = fresh();
+  assert.equal(store.doorRule(balanced), store.DOOR_RULES.balanced, 'balanced is the default');
+  assert.equal(store.isUnlocked(balanced, bossIndex), false);
+  know(balanced, 0.5, 2);
+  assert.equal(store.isUnlocked(balanced, bossIndex), true, 'balanced: half the letters, right first time twice');
+
+  const strict = fresh();
+  strict.settings.door = 'strict';
+  know(strict, 0.5, 2);
+  assert.equal(store.isUnlocked(strict, bossIndex), false, 'strict asks for more');
+  know(strict, 0.8, 3);
+  assert.equal(store.isUnlocked(strict, bossIndex), true);
+
+  // no setting can skip levels: the boss still needs the level before it finished
+  const early = store.migrate({ settings: { door: 'relaxed' } });
+  assert.equal(store.isUnlocked(early, bossIndex), false);
+});
+
+test('a grown-up stop point shuts everything after it, even levels already won', () => {
+  const s = store.migrate({});
+  for (let i = 0; i < 20; i++) s.done[LEVELS[i].id] = 3;
+  assert.equal(store.isUnlocked(s, 15), true);
+  s.stopAt = LEVELS[5].id;
+  assert.equal(store.isUnlocked(s, 5), true, 'the stop point itself can be played');
+  assert.equal(store.isUnlocked(s, 6), false, 'the level after it cannot');
+  assert.equal(store.isUnlocked(s, 15), false, 'not even one already won');
+  s.unlockAll = true;
+  assert.equal(store.isUnlocked(s, 6), false, '"unlock every level" does not get past it either');
+  s.unlockAll = false;
+  // the Play button practises the weakest level before the stop point
+  for (let i = 0; i <= 5; i++) for (const item of LEVELS[i].pool) s.mastery[`s:${item}`] = { b: 4 };
+  for (const item of LEVELS[2].pool) s.mastery[`s:${item}`] = { b: 0 };
+  assert.equal(store.nextLevelIndex(s), 2);
+  assert.ok(store.nextLevelIndex(s) <= 5);
+  // a new level before the stop point still comes first
+  delete s.done[LEVELS[4].id];
+  assert.equal(store.nextLevelIndex(s), 4);
+  // clearing it carries on where he was
+  s.stopAt = null;
+  s.done[LEVELS[4].id] = 2;
+  assert.equal(store.nextLevelIndex(s), 20);
+});

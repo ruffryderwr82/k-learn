@@ -104,8 +104,12 @@ record his name and up to ten cheers in your own voice, or type his name for the
 ## How progress works
 
 - **Each world ends with a boss.** Right answers zap it; five hits win. The boss asks about everything the world taught.
-- **The boss door opens on mastery, not completion.** 80% of what the boss asks about (letter sounds, then blending, then reading words, plus that world's sight words) must be learned
-  (three first-try answers each). Until then the Play button sends him to the level where he is weakest.
+- **The boss door** asks for more than finishing the levels, by a grown-up setting (grown-ups page → Boss doors):
+  *Relaxed* (finishing the levels is enough), *Balanced* (the default: about half of what the boss asks
+  about answered right first time twice) or *Strict* (80% known well, three first-try answers each).
+  Until it opens, the Play button sends him to the level where he is weakest.
+- **Stop point** (grown-ups page): pause the game at any level so he practises what comes before it.
+  Everything after it stays shut, even levels already won, and Play picks the weakest level before it.
 - **Beating a boss opens the next world and wins a power** that works everywhere: double jump, dash,
   coin magnet, bubble shield, and finally Golden Pip.
 - **Later worlds use those powers:** moving platforms and tall cliffs (double jump) from Sound Canyon,

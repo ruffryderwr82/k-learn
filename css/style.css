@@ -298,3 +298,9 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; }
 .voicelist { display: flex; flex-wrap: wrap; gap: 6px; max-height: 320px; overflow-y: auto; padding: 6px 2px; }
 .voicelist button { font: 600 14px system-ui, sans-serif; background: #e9edf7; border-radius: 8px; padding: 6px 10px; text-align: left; }
 #voiceCheck[hidden] { display: none; }
+
+/* levels paused by a grown-up's stop point */
+.node.paused { background: #e3e7f1; box-shadow: 0 8px 0 #c3cad9; color: #7a86a3; }
+.node.bonus.paused { background: #e3e7f1; }
+.parent-body label span { flex: 1; }
+.parent-body select { font: inherit; padding: 8px; border-radius: 10px; border: 2px solid #d9d2bd; max-width: 100%; }
