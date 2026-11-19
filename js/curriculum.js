@@ -33,9 +33,9 @@ export const LETTERS = {
   t: { word: 'turtle', emoji: '🐢' },
   u: { word: 'umbrella', emoji: '☂️' },
   v: { word: 'volcano', emoji: '🌋' },
-  w: { word: 'wolf', emoji: '🐺' },
+  w: { word: 'watermelon', emoji: '🍉' },
   x: { word: 'fox', emoji: '🦊', end: true }, // x is taught as an ending sound
-  y: { word: 'yarn', emoji: '🧶' },
+  y: { word: 'yo-yo', emoji: '🪀' },
   z: { word: 'zebra', emoji: '🦓' },
 };
 
@@ -70,6 +70,48 @@ export const PICTURES = {
   bee: '🐝', tree: '🌳', feet: '🦶', sheep: '🐑', rain: '🌧️', snail: '🐌', train: '🚂', boat: '⛵', goat: '🐐', soap: '🧼', leaf: '🍃', moon: '🌙', spoon: '🥄', book: '📖',
   // r-controlled
   star: '⭐', car: '🚗', corn: '🌽', fork: '🍴', bird: '🐦', shark: '🦈', horse: '🐴',
+};
+
+// The example word for a letter or letter pair. It is chosen by SPELLING, not by sound, so the
+// word always contains the letters being asked about: k is "kite" (not "cat", which has the same
+// sound but is spelled with c), and ck is "duck".
+const PAIR_KEYS = {
+  sh: { word: 'ship', emoji: '🚢', pos: 'start' },
+  ch: { word: 'chick', emoji: '🐥', pos: 'start' },
+  th: { word: 'bath', emoji: '🛁', pos: 'end' },
+  ck: { word: 'duck', emoji: '🦆', pos: 'end' },
+  ng: { word: 'ring', emoji: '💍', pos: 'end' },
+  ee: { word: 'bee', emoji: '🐝', pos: 'end' },
+  ai: { word: 'rain', emoji: '🌧️', pos: 'middle' },
+  oa: { word: 'boat', emoji: '⛵', pos: 'middle' },
+  oo: { word: 'moon', emoji: '🌙', pos: 'middle' },
+  ar: { word: 'car', emoji: '🚗', pos: 'end' },
+  or: { word: 'corn', emoji: '🌽', pos: 'middle' },
+  ir: { word: 'bird', emoji: '🐦', pos: 'middle' },
+};
+export function keyWord(g) {
+  if (LETTERS[g]) return { word: LETTERS[g].word, emoji: LETTERS[g].emoji, pos: LETTERS[g].end ? 'end' : 'start' };
+  return PAIR_KEYS[g];
+}
+
+// Other names a five-year-old might give a picture. Used so that no two pictures offered together
+// could have the same name (a ship is also a boat), and no wrong picture could fairly be said to
+// start with the letter asked about (the iguana could be called a lizard).
+export const ALT_NAMES = {
+  iguana: ['lizard'], queen: ['princess'], rocket: ['spaceship'], turtle: ['tortoise'], cat: ['kitty'], dog: ['puppy'],
+  hen: ['chicken'], chick: ['chicken', 'bird'], bird: ['chick'], rat: ['mouse'], van: ['bus', 'car'], bus: ['van'], car: ['van'],
+  jet: ['plane', 'airplane'], cone: ['ice cream'], home: ['house'], log: ['wood'], feet: ['foot'], cup: ['drink'],
+  nut: ['peanut'], net: ['goal'], gift: ['present'], pan: ['egg'], egg: ['pan'], cop: ['police'], kid: ['boy', 'child'],
+  man: ['dad'], lip: ['lips', 'mouth'], zip: ['zipper'], cap: ['hat'], hat: ['cap'], boat: ['ship'], ship: ['boat'],
+  sled: ['sleigh'], bath: ['tub'], tub: ['bath'], pot: ['soup'], can: ['tin'], rain: ['cloud'], rose: ['flower'],
+  bug: ['caterpillar', 'worm'], sheep: ['lamb'], horse: ['pony'], 'yo-yo': ['toy'], watermelon: ['melon'],
+};
+export const namesFor = (word) => [word, ...(ALT_NAMES[word] || [])];
+const sameThing = (a, b) => namesFor(a).some((n) => namesFor(b).includes(n));
+// the sound a name starts (or ends) with, for checking pictures against a letter
+const edgeSound = (name, end) => {
+  const parts = segment(name.replace(/[^a-z]/g, ''));
+  return parts.length ? parts[end ? parts.length - 1 : 0].s : null;
 };
 
 // Extra decodable words (no picture) used only as look-alike wrong answers.
@@ -334,7 +376,7 @@ function chooseItem(level, type, mastery, rng, avoid) {
 
 // Wrong answers that look like the right one, so the child has to really read.
 function similarWords(word, n, rng) {
-  const all = [...new Set([...Object.keys(PICTURES), ...DECOYS])].filter((w) => w !== word);
+  const all = [...new Set([...Object.keys(PICTURES), ...DECOYS])].filter((w) => !namesFor(word).includes(w));
   const score = (w) => {
     let s = 0;
     if (w[0] === word[0]) s += 2;
@@ -350,9 +392,11 @@ function otherPictures(word, n, rng) {
   // Never offer two pictures that share an emoji (tub / bath).
   const seen = new Set([PICTURES[word]]);
   const out = [];
+  const picked = [word];
   for (const w of shuffle(Object.keys(PICTURES), rng)) {
-    if (w === word || seen.has(PICTURES[w])) continue;
+    if (w === word || seen.has(PICTURES[w]) || picked.some((p) => sameThing(p, w))) continue;
     seen.add(PICTURES[w]);
+    picked.push(w);
     out.push(w);
     if (out.length === n) break;
   }
@@ -419,13 +463,14 @@ export function makeQuestion(level, mastery = {}, rng = Math.random, avoid = nul
     case 'hearSound': {
       // The core of phonics: hear a sound, find the letter(s) that spell it.
       const sid = soundOf(item);
-      const S = SOUNDS[sid];
+      const S = keyWord(item);
       const single = item.length === 1;
       const others = single ? otherLetters(level, item, 2, rng) : shuffle(DIGRAPHS.filter((d) => d !== item && soundOf(d) !== sid), rng).slice(0, 2);
       const where = { start: 'start', end: 'end', middle: 'middle' }[S.pos];
       const q = {
         ...base,
-        say: `${S.word}. Which one makes the sound at the ${where} of ${S.word}?`,
+        say: `${S.word}. Which one makes the sound ${where === 'middle' ? 'in' : 'at'} the ${where} of ${S.word}?`,
+        audio: [`${S.word}.`, `Which one makes the sound ${where === 'middle' ? 'in' : 'at'} the ${where} of`, `${S.word}?`],
         show: { emoji: S.emoji },
         praise: `Yes! ${spell(item)}. ${S.word}.`,
         praiseAudio: ['Yes!', ...names(item), `${S.word}.`],
@@ -442,19 +487,21 @@ export function makeQuestion(level, mastery = {}, rng = Math.random, avoid = nul
       const sid = soundOf(item);
       const where = L.end ? 'ends' : 'starts';
       const pic = (l) => ({ label: LETTERS[l].emoji, kind: 'emoji', say: LETTERS[l].word });
+      const clash = (l) => namesFor(LETTERS[l].word).some((n) => edgeSound(n, L.end) === sid);
+      const wrongs = otherLetters(level, item, 6, rng).filter((l) => !clash(l)).slice(0, 2);
       const q = {
         ...base,
         say: `This is the letter ${L.name}. Which one ${where} with ${L.name}?`,
         audio: ['This is', nm(item), `Which one ${where} with`, nm(item)],
         show: { text: item },
         praise: `${L.word} ${where} with ${L.name}!`,
-        praiseAudio: [`${L.word} ${where} with`, nm(item)],
+        praiseAudio: [L.word, `${where} with`, nm(item)],
       };
       if (has(sid)) {
         q.audio = ['This says', snd(sid), `Which one ${where} with`, snd(sid)];
         q.praiseAudio = [snd(sid), { pause: 150 }, `${L.word}!`];
       }
-      return finish(q, pic(item), otherLetters(level, item, 2, rng).map(pic), rng);
+      return finish(q, pic(item), wrongs.map(pic), rng);
     }
     case 'nameU':
     case 'nameL': {
@@ -484,6 +531,7 @@ export function makeQuestion(level, mastery = {}, rng = Math.random, avoid = nul
       const q = {
         ...base,
         say: `${item}. What is the ${which} sound in ${item}?`,
+        audio: [`${item}.`, `What is the ${which} sound in`, `${item}?`],
         show: { emoji: PICTURES[item] },
         praise: `Yes! ${spell(g)}. ${item}.`,
         praiseAudio: ['Yes!', nm(g), `${item}.`],
@@ -517,18 +565,20 @@ export function makeQuestion(level, mastery = {}, rng = Math.random, avoid = nul
       return finish({
         ...base,
         say: 'Sound it out. Find the picture.',
+        audio: ['Sound it out.', 'Find the picture.'],
         show: { word: item },
         soundOut: soundsIn(item),
         praise: `${item}!`,
-        praiseAudio: hasAll(soundsIn(item)) ? [...stretched(item), { pause: 250 }, `${item}!`] : undefined,
+        praiseAudio: hasAll(soundsIn(item)) ? [...stretched(item), { pause: 250 }, `${item}!`] : [`${item}!`],
       }, picChoice(item), otherPictures(item, 2, rng).map(picChoice), rng);
     case 'pic2word':
       return finish({
         ...base,
         say: `${item}. Find the word ${item}.`,
+        audio: [`${item}.`, 'Find the word', `${item}.`],
         show: { emoji: PICTURES[item] },
         praise: `${item}!`,
-        praiseAudio: hasAll(soundsIn(item)) ? [...stretched(item), { pause: 250 }, `${item}!`] : undefined,
+        praiseAudio: hasAll(soundsIn(item)) ? [...stretched(item), { pause: 250 }, `${item}!`] : [`${item}!`],
       }, wordChoice(item), similarWords(item, 2, rng).map(wordChoice), rng);
     case 'build': {
       // Spelling by sound: say the word, pull it apart, bump each letter in order.
@@ -538,9 +588,10 @@ export function makeQuestion(level, mastery = {}, rng = Math.random, avoid = nul
       return {
         ...base,
         say: `${item}. Spell ${item}. Bump the sounds in order.`,
+        audio: [`${item}.`, 'Spell', `${item}.`, 'Bump the sounds in order.'],
         show: { emoji: PICTURES[item], slots: letters },
         praise: `${item}!`,
-        praiseAudio: hasAll(soundsIn(item)) ? [...stretched(item), { pause: 250 }, `${item}!`] : undefined,
+        praiseAudio: hasAll(soundsIn(item)) ? [...stretched(item), { pause: 250 }, `${item}!`] : [`${item}!`],
         choices,
         answer: order.indexOf(0),
         sequence: [0, 1, 2].map((i) => order.indexOf(i)),
@@ -552,14 +603,22 @@ export function makeQuestion(level, mastery = {}, rng = Math.random, avoid = nul
       const near = shuffle(all.filter((w) => w[0].toLowerCase() === item[0].toLowerCase() || (w.length === item.length && w.slice(-1) === item.slice(-1))), rng);
       const wrongs = [...near, ...shuffle(all, rng)].filter((w, i, a) => a.indexOf(w) === i).slice(0, 2);
       const heart = HEART[item] || [];
-      const tricky = heart.length && heart.length < item.length ? ` The tricky part is ${heart.map((i) => LETTERS[item[i].toLowerCase()].name).join(' ')}.` : '';
+      const showTricky = heart.length && heart.length < item.length;
+      const tricky = showTricky ? ` The tricky part is ${heart.map((i) => LETTERS[item[i].toLowerCase()].name).join(' ')}.` : '';
       const c = (w) => ({ ...wordChoice(w), heart: HEART[w] || [] });
-      return finish({ ...base, say: `Find the word: ${item}.`, show: null, praise: `${item}!${tricky}` }, c(item), wrongs.map(c), rng);
+      return finish({
+        ...base,
+        say: `Find the word: ${item}.`,
+        audio: ['Find the word', `${item}.`],
+        show: null,
+        praise: `${item}!${tricky}`,
+        praiseAudio: [`${item}!`, ...(showTricky ? ['The tricky part is', ...heart.map((i) => nm(item[i].toLowerCase()))] : [])],
+      }, c(item), wrongs.map(c), rng);
     }
     case 'sentpic': {
       const [text, right, wrong] = SENTENCE_PICS[item];
       const c = (e) => ({ label: e, kind: 'emoji', say: null });
-      return finish({ ...base, say: 'Read it. Find the picture.', show: { text, long: true }, praise: text }, c(right), wrong.map(c), rng);
+      return finish({ ...base, say: 'Read it. Find the picture.', audio: ['Read it. Find the picture.'], show: { text, long: true }, praise: text, praiseAudio: [text] }, c(right), wrong.map(c), rng);
     }
     case 'yesno':
       return yesNo(type, item);
@@ -574,7 +633,9 @@ function yesNo(type, i) {
   return {
     type, item: i, key: skillKey(type, i),
     say: 'Read it. Is it true? Thumbs up or thumbs down?', show: { text, long: true },
+    audio: ['Read it. Is it true? Thumbs up or thumbs down?'],
     praise: yes ? `Yes! ${text}` : `Silly! ${text} No way!`,
+    praiseAudio: yes ? ['Yes!', text] : ['Silly!', text, 'No way!'],
     choices, answer: yes ? 0 : 1,
   };
 }

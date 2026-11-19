@@ -34,6 +34,19 @@ literacy programs:
 | Sky Islands | sh ch th ck ng taught as sounds, then blends; 12 more sight words | "Which one says shhh?" then read **ship** |
 | Story Summit (1st grade) | Magic e, vowel teams, r-controlled vowels, 12 more sight words, sentences | Read a sentence, pick the picture |
 
+### The voice
+
+Every word, sentence, instruction, cheer and letter name is a ready-made clip in `voice/`
+(about 430 short MP3s, 4 MB), made with ElevenLabs (voice: Matilda, model: eleven_v4_turbo).
+They ship inside the app, so it works offline. Anything without a clip falls back to the
+tablet's own voice, and the tests fail if any line the game can say is missing a clip.
+
+To check them, open the grown-ups page → **Voice check** and tap through the list.
+
+To add or change lines: edit the game, then run `npm run voice` (`npm run voice -- --dry` first
+to see the cost). Only new or changed lines are generated; clips no longer used are removed.
+It needs an ElevenLabs API key in `ELEVENLABS_API_KEY` (text-to-speech permission is enough).
+
 ### Record the letter sounds first
 
 A tablet's built-in voice can say letter *names* but not a clean "mmm" or "sss", and sounding out

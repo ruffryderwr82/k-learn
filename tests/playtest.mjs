@@ -143,7 +143,11 @@ const expected = { livesAfterOne: 2, livesAfterTwo: 1 }; // everything else shou
 const missFails = Object.entries(misses).filter(([k, v]) => v !== (expected[k] ?? true));
 console.log('wrong-answer rules:', JSON.stringify(misses));
 
-let bad = missFails.length;
+// every line spoken during all that play must have had a ready-made voice clip
+const voiceMisses = await page.evaluate(() => [...window.__k.audio.voiceMisses]);
+console.log(voiceMisses.length ? `spoken without a voice clip: ${voiceMisses.join(' | ')}` : 'every spoken line had a voice clip');
+
+let bad = missFails.length + voiceMisses.length;
 for (const r of results) {
   if (!r.ok || r.firstTry !== (r.mini ? r.total : r.boss ? 5 : 6)) bad++;
   console.log(`${r.ok ? 'ok  ' : 'FAIL'} ${r.id.padEnd(22)} ${String(r.seconds).padStart(3)}s  ${r.mini ? 'bonus game' : r.width + ' tiles'}  coins ${r.coins ?? '-'}  first-try ${r.firstTry ?? '-'}/${r.mini ? r.total : r.boss ? 5 : 6} ${r.ok ? '' : 'stuck at column ' + r.stuckAt}`);

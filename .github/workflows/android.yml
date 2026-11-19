@@ -6,7 +6,7 @@ name: Android APK
 # - On other branches, the APK is only kept as a run artifact for testing.
 on:
   push:
-    paths: ['js/**', 'css/**', 'fonts/**', 'icons/**', 'index.html', 'android/**', 'package*.json', 'capacitor.config.json', '.github/workflows/android.yml']
+    paths: ['js/**', 'css/**', 'fonts/**', 'icons/**', 'voice/**', 'index.html', 'android/**', 'package*.json', 'capacitor.config.json', '.github/workflows/android.yml']
   workflow_dispatch:
 
 permissions:
