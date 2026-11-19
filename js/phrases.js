@@ -21,6 +21,7 @@ export const UI_LINES = [
   // the map
   'You beat this boss!', 'The boss door is open!', 'Keep playing to open the boss door!',
   'Finish the level before it to play this bonus game.',
+  'A grown-up has paused this part for now. Keep practicing the ones before it!',
   // the shop
   'Beat the last boss to win this one.', 'You need more coins. Keep playing!', 'You need more gems. Find the hidden gems in the levels!',
   // the Letter Village

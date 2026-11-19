@@ -119,7 +119,18 @@ export function reset() {
 }
 
 export const MASTERED = 3;
-export const GATE = 0.8; // share of a world's skills that must be mastered to face its boss
+
+// How much a world's boss door asks for, chosen on the grown-ups page. Levels always open one
+// after another, so reaching the boss already means every level in the world is finished.
+//   relaxed   finishing the levels is enough
+//   balanced  ...and about half the world's letters or words answered right first time twice
+//   strict    ...and 80% of them known well (right first time three times)
+export const DOOR_RULES = {
+  relaxed: { share: 0, box: 0 },
+  balanced: { share: 0.5, box: 2 },
+  strict: { share: 0.8, box: 3 },
+};
+export const doorRule = (state) => DOOR_RULES[state.settings?.door] || DOOR_RULES.balanced;
 
 // Leitner-style: a first-try right answer moves a skill up a box, a miss moves it down.
 export function recordAnswer(state, key, firstTry) {
@@ -132,14 +143,28 @@ const box = (state, key) => state.mastery[key]?.b || 0;
 
 /** How close a world is to opening its boss door. */
 export function worldMastery(state, world) {
+  const rule = doorRule(state);
   const keys = worldSkills(world);
-  const have = keys.filter((k) => box(state, k) >= MASTERED).length;
-  return { have, need: Math.ceil(keys.length * GATE), total: keys.length };
+  const have = keys.filter((k) => box(state, k) >= rule.box).length;
+  return { have: rule.share ? have : 0, need: Math.ceil(keys.length * rule.share), total: keys.length };
 }
 
-// Levels open one after another. A boss also needs the world's skills to be mastered,
-// and the next world only opens once the boss is beaten.
+/**
+ * The grown-up's stop point: the last level that can be played, as an index into LEVELS
+ * (Infinity when there is none). Everything after it stays shut, even levels already won,
+ * so he practises what came before.
+ */
+export function stopIndex(state) {
+  if (!state.stopAt) return Infinity;
+  const i = LEVELS.findIndex((l) => l.id === state.stopAt);
+  return i === -1 ? Infinity : i;
+}
+export const pausedByGrownUp = (state, index) => index > stopIndex(state);
+
+// Levels open one after another. A boss also needs its door open (see DOOR_RULES), and the
+// next world only opens once the boss is beaten. Nothing past the grown-up's stop point opens.
 export function isUnlocked(state, index) {
+  if (pausedByGrownUp(state, index)) return false;
   if (state.unlockAll || index === 0) return true;
   if (!state.done[LEVELS[index - 1].id]) return false;
   const level = LEVELS[index];
@@ -152,13 +177,17 @@ export function isUnlocked(state, index) {
 export function nextLevelIndex(state) {
   const fresh = LEVELS.findIndex((l, i) => !state.done[l.id] && isUnlocked(state, i));
   if (fresh !== -1) return fresh;
-  // Everything open has been played: the boss door is still shut (or the game is finished).
+  // Everything open has been played. If a grown-up set a stop point, practise the weakest
+  // level anywhere before it; otherwise the boss door is still shut (or the game is finished),
+  // so practise the weakest level in that world.
+  const stop = stopIndex(state);
   const gated = LEVELS.find((l) => !state.done[l.id]);
   const world = gated ? gated.world : LEVELS[LEVELS.length - 1].world;
-  let best = 0;
+  const inRange = (l, i) => (stop < Infinity ? i <= stop : l.world === world);
+  let best = Math.min(0, stop);
   let bestScore = Infinity;
   LEVELS.forEach((l, i) => {
-    if (l.world !== world || l.boss) return;
+    if (!inRange(l, i) || l.boss || !isUnlocked(state, i)) return;
     const score = l.pool.reduce((n, item) => n + box(state, skillKey(l.types[0], item)), 0) / l.pool.length
       + (state.plays[l.id] || 0) * 0.01; // break ties toward the least played
     if (score < bestScore) { bestScore = score; best = i; }
@@ -179,3 +208,6 @@ export function gemCount(state) {
 }
 
 export const gemBalance = (state) => gemCount(state) - (state.gemsSpent || 0);
+
+// for the tests
+export const __forTests = { worldSkills };

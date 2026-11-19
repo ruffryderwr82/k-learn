@@ -275,7 +275,7 @@ function finishLevel(r) {
   setTimeout(() => starEls.forEach((el, i) => el.classList.toggle('on', i < stars)), 150);
   audio.music(null);
   const bonusAfter = BONUSES.find((b) => b.after === current);
-  $('btnBonus').hidden = !bonusAfter;
+  $('btnBonus').hidden = !bonusAfter || store.pausedByGrownUp(state, current);
   if (bonusAfter) $('btnBonus').textContent = MINI.find((g) => g.id === bonusAfter.game).icon;
   const bonusNews = bonusAfter && !(state.bonus || {})[bonusAfter.id] ? ['A bonus game is open!'] : [];
   $('donePower').hidden = !power;
@@ -440,7 +440,7 @@ function renderMap() {
   const beaten = !!state.done[bossLevel.id];
   const open = gate.have >= gate.need || state.unlockAll || beaten;
   $('gate').classList.toggle('open', open);
-  $('gateFill').style.width = `${Math.min(100, (100 * gate.have) / gate.need)}%`;
+  $('gateFill').style.width = `${gate.need ? Math.min(100, (100 * gate.have) / gate.need) : 100}%`;
   $('gateText').textContent = open ? '' : `${gate.have} / ${gate.need}`;
   $('gateIcon').textContent = beaten ? '✅' : open ? '👑' : '🔒';
   $('gate').onclick = () => {
@@ -455,16 +455,18 @@ function renderMap() {
     if (level.world !== mapWorld) return;
     n++;
     const open = store.isUnlocked(state, i);
+    const paused = store.pausedByGrownUp(state, i);
     const b = document.createElement('button');
-    b.className = `node ${level.boss ? 'boss' : ''} ${open ? '' : 'locked'} ${i === next && open ? 'next' : ''}`;
+    b.className = `node ${level.boss ? 'boss' : ''} ${open ? '' : 'locked'} ${paused ? 'paused' : ''} ${i === next && open ? 'next' : ''}`;
     const stars = state.done[level.id] || 0;
-    b.innerHTML = `<b>${!open ? '🔒' : level.boss ? '👑' : n}</b><small></small><span class="s">${'⭐'.repeat(stars)}</span>`;
+    b.innerHTML = `<b>${paused ? '⏸️' : !open ? '🔒' : level.boss ? '👑' : n}</b><small></small><span class="s">${'⭐'.repeat(stars)}</span>`;
     b.querySelector('small').textContent = level.title;
     b.onclick = () => {
       audio.unlock();
       if (!open) {
         audio.sfx('wrong');
-        if (level.boss && state.done[LEVELS[i - 1].id]) $('gate').onclick();
+        if (paused) say('A grown-up has paused this part for now. Keep practicing the ones before it!');
+        else if (level.boss && state.done[LEVELS[i - 1].id]) $('gate').onclick();
         return;
       }
       audio.sfx('tap');
@@ -475,15 +477,16 @@ function renderMap() {
     if (bi >= 0) {
       const bonus = BONUSES[bi];
       const game = MINI.find((g) => g.id === bonus.game);
-      const ready = !!state.done[level.id] || state.unlockAll;
+      const bonusPaused = store.pausedByGrownUp(state, i);
+      const ready = (!!state.done[level.id] || state.unlockAll) && !bonusPaused;
       const bb = document.createElement('button');
       bb.className = `node bonus ${ready ? '' : 'locked'}`;
       bb.setAttribute('aria-label', game.name);
-      bb.innerHTML = `<b>${ready ? game.icon : '🔒'}</b><small></small><span class="s">${'⭐'.repeat((state.bonus || {})[bonus.id] || 0)}</span>`;
+      bb.innerHTML = `<b>${bonusPaused ? '⏸️' : ready ? game.icon : '🔒'}</b><small></small><span class="s">${'⭐'.repeat((state.bonus || {})[bonus.id] || 0)}</span>`;
       bb.querySelector('small').textContent = game.name;
       bb.onclick = () => {
         audio.unlock();
-        if (!ready) { audio.sfx('wrong'); say('Finish the level before it to play this bonus game.'); return; }
+        if (!ready) { audio.sfx('wrong'); say(bonusPaused ? 'A grown-up has paused this part for now. Keep practicing the ones before it!' : 'Finish the level before it to play this bonus game.'); return; }
         audio.sfx('tap');
         startBonus(bi);
       };
@@ -736,13 +739,25 @@ function renderParent() {
       <label><input type="checkbox" id="optUnlock" ${state.unlockAll ? 'checked' : ''}> Unlock every level and power (to start further along)</label>
     </section>
     <section>
+      <h3>Boss doors</h3>
+      <p>Each world ends with a boss. Levels open one after another, so he always finishes every level in a world before reaching its boss. This sets what else the boss door asks for:</p>
+      <label><input type="radio" name="door" value="relaxed" ${store.doorRule(state) === store.DOOR_RULES.relaxed ? 'checked' : ''}> <span><b>Relaxed:</b> finishing the levels is enough.</span></label>
+      <label><input type="radio" name="door" value="balanced" ${store.doorRule(state) === store.DOOR_RULES.balanced ? 'checked' : ''}> <span><b>Balanced</b> (recommended): he has also answered about half of the world's letters or words right the first time, twice.</span></label>
+      <label><input type="radio" name="door" value="strict" ${store.doorRule(state) === store.DOOR_RULES.strict ? 'checked' : ''}> <span><b>Strict:</b> he knows 80% of them well (right the first time three times). This usually means replaying levels.</span></label>
+    </section>
+    <section>
+      <h3>Stop point</h3>
+      <p>Pause the game at a level, to make him practise what comes before it. Levels and bonus games after it stay shut (shown with ⏸️), even ones he has already won, and the Play button picks the level before it where he is weakest. Set it back to <b>No stop point</b> to carry on.</p>
+      <label>Play up to and including <select id="optStop"></select></label>
+    </section>
+    <section>
       <h3>Sound</h3>
       <label><input type="checkbox" data-set="voice" ${state.settings.voice ? 'checked' : ''}> Speaking voice</label>
       <label><input type="checkbox" data-set="sfx" ${state.settings.sfx ? 'checked' : ''}> Sound effects</label>
       <label><input type="checkbox" data-set="music" ${state.settings.music ? 'checked' : ''}> Music</label>
       <label>His name <input id="optName" type="text" maxlength="20" autocomplete="off" placeholder="For &quot;Great job, ___!&quot;" value=""></label>
       <button class="plain" id="optTest">Test the voice</button>
-      <p>The voice is the device's built-in one. If it is silent, check the mute switch and volume.</p>
+      <p>The game speaks with ready-made voice clips (see Voice check above). His name, and anything without a clip, uses the device's own voice. If nothing plays, check the mute switch and volume.</p>
     </section>
     <section>
       <h3>Start over</h3>
@@ -752,6 +767,24 @@ function renderParent() {
   renderStudio();
   renderVoiceCheck();
   $('optUnlock').onchange = (e) => { state.unlockAll = e.target.checked; store.save(state); };
+  document.querySelectorAll('input[name=door]').forEach((el) => {
+    el.onchange = () => { state.settings.door = el.value; store.save(state); renderParent(); };
+  });
+  const stop = $('optStop');
+  stop.append(new Option('No stop point', ''));
+  WORLDS.forEach((w, wi) => {
+    const group = document.createElement('optgroup');
+    group.label = `${w.icon} ${w.name}`;
+    let n = 0;
+    LEVELS.forEach((l) => {
+      if (l.world !== wi) return;
+      const label = l.boss ? 'Boss' : `${++n}. ${l.title}`;
+      group.append(new Option(`${w.name} ${label}`, l.id));
+    });
+    stop.append(group);
+  });
+  stop.value = state.stopAt || '';
+  stop.onchange = () => { state.stopAt = stop.value || null; store.save(state); };
   document.querySelectorAll('[data-set]').forEach((el) => {
     el.onchange = () => {
       state.settings[el.dataset.set] = el.checked;
