@@ -101,6 +101,7 @@ const game = new Game($('game'), {
 
 function wrongVoice(q, choice) {
   if (q.sequence) return audio.play(['Not quite.', q.item]);
+  if (q.wrongAudio) return audio.play(q.wrongAudio);
   const bySound = choice.sound && audio.hasSound(choice.sound) && promptScript(q).some((part) => part.s);
   const picked = bySound ? ['That one says', { s: choice.sound }]
     : choice.names ? ['That one is', ...choice.names.map((name) => ({ name }))]

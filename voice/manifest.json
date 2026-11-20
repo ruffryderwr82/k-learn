@@ -4,9 +4,9 @@
    "file": "a-86f7e4.mp3",
    "text": "a."
   },
-  "a bed can run": {
-   "file": "a-bed-can-run-a1854b.mp3",
-   "text": "A bed can run."
+  "a bed can not run we sleep in a bed": {
+   "file": "a-bed-can-not-run-we-sleep-in-a-bed-c87dc8.mp3",
+   "text": "A bed can not run. We sleep in a bed!"
   },
   "a bee can buzz": {
    "file": "a-bee-can-buzz-d51c44.mp3",
@@ -24,13 +24,13 @@
    "file": "a-bus-is-big-5096f4.mp3",
    "text": "A bus is big."
   },
-  "a cat can drive a van": {
-   "file": "a-cat-can-drive-a-van-4f45a7.mp3",
-   "text": "A cat can drive a van."
+  "a cat can not drive people drive vans": {
+   "file": "a-cat-can-not-drive-people-drive-vans-4ec0ee.mp3",
+   "text": "A cat can not drive. People drive vans!"
   },
-  "a dog has six legs": {
-   "file": "a-dog-has-six-legs-409a3a.mp3",
-   "text": "A dog has six legs."
+  "a dog has four legs": {
+   "file": "a-dog-has-four-legs-d58931.mp3",
+   "text": "A dog has four legs!"
   },
   "a duck can swim": {
    "file": "a-duck-can-swim-1e5ef3.mp3",
@@ -52,25 +52,25 @@
    "file": "a-horse-can-run-fast-657b6c.mp3",
    "text": "A horse can run fast."
   },
-  "a pig can fly": {
-   "file": "a-pig-can-fly-50ab89.mp3",
-   "text": "A pig can fly."
+  "a pig can not fly a bird can fly": {
+   "file": "a-pig-can-not-fly-a-bird-can-fly-29dddf.mp3",
+   "text": "A pig can not fly. A bird can fly!"
   },
   "a snail is on the leaf": {
    "file": "a-snail-is-on-the-leaf-bd9ccd.mp3",
    "text": "A snail is on the leaf."
   },
-  "a snake has feet": {
-   "file": "a-snake-has-feet-26f08e.mp3",
-   "text": "A snake has feet."
+  "a snake has no feet it slides on its tummy": {
+   "file": "a-snake-has-no-feet-it-slides-on-its-tum-8cfd09.mp3",
+   "text": "A snake has no feet. It slides on its tummy!"
   },
-  "a tree can talk": {
-   "file": "a-tree-can-talk-b95a35.mp3",
-   "text": "A tree can talk."
+  "a tree can not talk a tree can grow": {
+   "file": "a-tree-can-not-talk-a-tree-can-grow-d2094e.mp3",
+   "text": "A tree can not talk. A tree can grow!"
   },
-  "a whale is small": {
-   "file": "a-whale-is-small-9536ad.mp3",
-   "text": "A whale is small."
+  "a whale is very big it is bigger than a bus": {
+   "file": "a-whale-is-very-big-it-is-bigger-than-a--c2f299.mp3",
+   "text": "A whale is very big. It is bigger than a bus!"
   },
   "all": {
    "file": "all-d87c44.mp3",
@@ -303,10 +303,6 @@
   "corn": {
    "file": "corn-7cacb7.mp3",
    "text": "corn."
-  },
-  "corn is a snack": {
-   "file": "corn-is-a-snack-956efa.mp3",
-   "text": "Corn is a snack."
   },
   "cot": {
    "file": "cot-7fd2e9.mp3",
@@ -976,10 +972,6 @@
    "file": "no-fd1286.mp3",
    "text": "no."
   },
-  "no way": {
-   "file": "no-way-1b20fd.mp3",
-   "text": "No way!"
-  },
   "nod": {
    "file": "nod-55e5f0.mp3",
    "text": "nod."
@@ -1220,10 +1212,6 @@
    "file": "shut-e9683b.mp3",
    "text": "shut."
   },
-  "silly": {
-   "file": "silly-e891b5.mp3",
-   "text": "Silly!"
-  },
   "sing": {
    "file": "sing-f9bef9.mp3",
    "text": "sing."
@@ -1380,9 +1368,21 @@
    "file": "tent-899343.mp3",
    "text": "tent."
   },
+  "that is silly": {
+   "file": "that-is-silly-6c2b70.mp3",
+   "text": "That is silly!"
+  },
   "that one is": {
    "file": "that-one-is-f6cab3.mp3",
    "text": "That one is"
+  },
+  "that one is silly": {
+   "file": "that-one-is-silly-f01044.mp3",
+   "text": "That one is silly!"
+  },
+  "that one is true": {
+   "file": "that-one-is-true-59186b.mp3",
+   "text": "That one is true!"
   },
   "that one says": {
    "file": "that-one-says-1ce5be.mp3",
@@ -1552,6 +1552,10 @@
    "file": "we-676e6f.mp3",
    "text": "we."
   },
+  "we can eat corn": {
+   "file": "we-can-eat-corn-b54bac.mp3",
+   "text": "We can eat corn."
+  },
   "we can see the moon": {
    "file": "we-can-see-the-moon-f0fd68.mp3",
    "text": "We can see the moon."
@@ -1664,9 +1668,9 @@
    "file": "you-beat-this-boss-cac5f9.mp3",
    "text": "You beat this boss!"
   },
-  "you can eat a rock": {
-   "file": "you-can-eat-a-rock-6b95c8.mp3",
-   "text": "You can eat a rock."
+  "you can not eat a rock you can eat a cake": {
+   "file": "you-can-not-eat-a-rock-you-can-eat-a-cak-b2868b.mp3",
+   "text": "You can not eat a rock. You can eat a cake!"
   },
   "you did it": {
    "file": "you-did-it-fa53db.mp3",

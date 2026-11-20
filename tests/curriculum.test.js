@@ -275,7 +275,7 @@ test('every line the game can say has a voice clip', async () => {
       const rng = mulberry32(99);
       for (let i = 0; i < 800; i++) {
         const q = makeQuestion(level, {}, rng, null, has);
-        for (const p of [...q.audio, ...q.praiseAudio]) check(p);
+        for (const p of [...q.audio, ...q.praiseAudio, ...(q.wrongAudio || [])]) check(p);
         for (const c of q.choices) { if (c.say && !c.names) check(`${c.say}.`); for (const n of c.names || []) check({ name: n }); }
       }
     }
@@ -284,4 +284,25 @@ test('every line the game can say has a voice clip', async () => {
   // a letter's name and the word "a" are different clips: the word must never be read as "ay"
   assert.equal(manifest.clips.a?.text, 'a.');
   assert.equal(manifest.clips['letter:a']?.text, 'A.');
+});
+
+test('every silly sentence comes with the real fact, said whichever way he answers', async () => {
+  const { SILLY_OR_TRUE } = await import('../js/curriculum.js');
+  const seen = new Set();
+  for (const [text, yes, fact] of SILLY_OR_TRUE) {
+    assert.ok(!seen.has(text), `${text} appears twice`);
+    seen.add(text);
+    if (yes) assert.equal(fact, undefined, `${text} is true, so it needs no correction`);
+    else {
+      assert.ok(fact && fact.length > 5, `${text} needs the real fact`);
+      assert.notEqual(fact, text);
+    }
+  }
+  const level = LEVELS.find((l) => l.poolKind === 'yn');
+  for (let i = 0; i < SILLY_OR_TRUE.length; i++) {
+    const q = makeQuestion({ ...level, types: ['yesno'], pool: [i], review: [] }, {}, mulberry32(i));
+    const [text, yes, fact] = SILLY_OR_TRUE[i];
+    assert.deepEqual(q.praiseAudio, yes ? ['Yes!', text] : ['That is silly!', fact]);
+    assert.ok(q.wrongAudio.includes(yes ? text : fact), 'a wrong answer is corrected too');
+  }
 });

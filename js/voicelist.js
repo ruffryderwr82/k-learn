@@ -30,6 +30,7 @@ export function voiceLines({ samples = 500 } = {}) {
         const q = makeQuestion(level, {}, rng, null, has);
         addScript(q.audio || [q.say]);
         addScript(q.praiseAudio || [q.praise]);
+        addScript(q.wrongAudio);
         // "That one is ... cat." (letter answers are named letter by letter instead)
         for (const c of q.choices) if (c.say && !c.names) add(`${c.say}.`);
         if (q.sequence) add(`${q.item}.`); // "Not quite." + the word

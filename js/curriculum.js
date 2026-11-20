@@ -170,14 +170,21 @@ const SENTENCE_PICS = [
 ];
 
 // Read the sentence, decide if it is true or silly.
+// "Silly or true?": read the sentence, thumbs up if it is true, thumbs down if it is silly.
+// The silly ones are on purpose, to check he understood what he read, so each must be
+// plainly silly to a five-year-old and comes with the real fact, which the voice says as soon
+// as he answers (or gets it wrong), so he never leaves with a wrong idea. True ones must be
+// true without "it depends".
+//   [sentence, true]  or  [sentence, false, what is actually true]
 const SENTENCE_YN = [
-  ['A fish can swim.', true], ['A pig can fly.', false], ['The sun is hot.', true],
-  ['A bus is big.', true], ['A cat can drive a van.', false], ['A dog has six legs.', false],
-  ['A frog can hop.', true], ['A bed can run.', false], ['A bee can buzz.', true],
-  ['A snake has feet.', false], ['We sleep in a bed.', true], ['A whale is small.', false],
-  ['Rain is wet.', true], ['A tree can talk.', false], ['A bird can sing.', true],
-  ['You can eat a rock.', false], ['A horse can run fast.', true], ['Corn is a snack.', true],
+  ['A fish can swim.', true], ['A pig can fly.', false, 'A pig can not fly. A bird can fly!'], ['The sun is hot.', true],
+  ['A bus is big.', true], ['A cat can drive a van.', false, 'A cat can not drive. People drive vans!'], ['A dog has six legs.', false, 'A dog has four legs!'],
+  ['A frog can hop.', true], ['A bed can run.', false, 'A bed can not run. We sleep in a bed!'], ['A bee can buzz.', true],
+  ['A snake has feet.', false, 'A snake has no feet. It slides on its tummy!'], ['We sleep in a bed.', true], ['A whale is small.', false, 'A whale is very big. It is bigger than a bus!'],
+  ['Rain is wet.', true], ['A tree can talk.', false, 'A tree can not talk. A tree can grow!'], ['A bird can sing.', true],
+  ['You can eat a rock.', false, 'You can not eat a rock. You can eat a cake!'], ['A horse can run fast.', true], ['We can eat corn.', true],
 ];
+export const SILLY_OR_TRUE = SENTENCE_YN;
 
 export const SIGHT_WORDS = SIGHT_SETS.flat();
 
@@ -628,14 +635,16 @@ export function makeQuestion(level, mastery = {}, rng = Math.random, avoid = nul
 }
 
 function yesNo(type, i) {
-  const [text, yes] = SENTENCE_YN[i];
+  const [text, yes, fact] = SENTENCE_YN[i];
   const choices = [{ label: '👍', kind: 'emoji', say: null }, { label: '👎', kind: 'emoji', say: null }];
   return {
     type, item: i, key: skillKey(type, i),
     say: 'Read it. Is it true? Thumbs up or thumbs down?', show: { text, long: true },
     audio: ['Read it. Is it true? Thumbs up or thumbs down?'],
-    praise: yes ? `Yes! ${text}` : `Silly! ${text} No way!`,
-    praiseAudio: yes ? ['Yes!', text] : ['Silly!', text, 'No way!'],
+    praise: yes ? `Yes! ${text}` : `Silly! ${fact}`,
+    praiseAudio: yes ? ['Yes!', text] : ['That is silly!', fact],
+    // a wrong answer is corrected too, before the next question
+    wrongAudio: yes ? ['That one is true!', text] : ['That one is silly!', fact],
     choices, answer: yes ? 0 : 1,
   };
 }
